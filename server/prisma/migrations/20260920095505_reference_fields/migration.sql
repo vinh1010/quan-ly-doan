@@ -1,0 +1,16 @@
+-- AlterTable
+ALTER TABLE "Secretary" ADD COLUMN     "association" TEXT,
+ADD COLUMN     "cardIssuePlace" TEXT,
+ADD COLUMN     "hometownProvince" TEXT,
+ADD COLUMN     "hometownWard" TEXT,
+ADD COLUMN     "itLevel" TEXT,
+ADD COLUMN     "language" TEXT,
+ADD COLUMN     "memberCode" TEXT,
+ADD COLUMN     "occupation" TEXT,
+ADD COLUMN     "partyJoinDate" DATE,
+ADD COLUMN     "partyPosition" TEXT,
+ADD COLUMN     "politicalTheory" TEXT,
+ADD COLUMN     "residenceProvince" TEXT,
+ADD COLUMN     "residenceWard" TEXT,
+ADD COLUMN     "unionJoinDate" DATE,
+ADD COLUMN     "unionJoinPlace" TEXT;

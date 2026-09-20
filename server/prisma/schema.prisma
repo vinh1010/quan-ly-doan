@@ -1,0 +1,191 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------- Enums ----------
+
+enum UserRole {
+  ADMIN      // quản trị hệ thống
+  SUPERIOR   // Cán bộ Đoàn cấp trên (M1)
+  SECRETARY  // Bí thư Đoàn cơ sở
+}
+
+enum AccountStatus {
+  ACTIVE // kích hoạt
+  LOCKED // tạm khóa
+}
+
+enum UnitLevel {
+  TINH      // Thành đoàn / Tỉnh đoàn
+  HUYEN     // Huyện, quận, thành phố thuộc tỉnh
+  XA_PHUONG // Xã, phường, thị trấn (khu vực)
+  CO_SO     // Đoàn cơ sở
+  CHI_DOAN  // Chi đoàn
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+}
+
+enum SecretaryPosition {
+  BI_THU     // Bí thư Đoàn cơ sở
+  PHO_BI_THU // Phó Bí thư
+}
+
+enum SecretaryStatus {
+  ACTIVE // đang hoạt động (trong nhiệm kỳ)
+  ENDED  // đã kết thúc
+}
+
+enum AuditAction {
+  LOGIN
+  LOGOUT
+  CHANGE_PASSWORD
+  CREATE
+  UPDATE
+  DELETE
+  VIEW
+  SEARCH
+  EXPORT
+  LOCK_ACCOUNT
+  UNLOCK_ACCOUNT
+}
+
+// ---------- Models ----------
+
+model User {
+  id               Int           @id @default(autoincrement())
+  username         String        @unique
+  passwordHash     String
+  role             UserRole
+  status           AccountStatus @default(ACTIVE)
+  fullName         String?
+  email            String?
+  unitId           Int?
+  unit             Unit?         @relation(fields: [unitId], references: [id])
+
+  // chính sách đăng nhập: khóa khi nhập sai nhiều lần
+  failedLoginCount Int           @default(0)
+  lockedUntil      DateTime?
+  lastLoginAt      DateTime?
+  passwordChangedAt DateTime?
+
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  secretary        Secretary?
+  auditLogs        AuditLog[]
+
+  @@index([role, status])
+  @@index([unitId])
+}
+
+// Cây đơn vị: Huyện > Xã/Phường (khu vực) > Cơ sở > Chi đoàn
+model Unit {
+  id          Int         @id @default(autoincrement())
+  code        String?     @unique // mã đơn vị / mã vùng
+  name        String
+  level       UnitLevel
+  parentId    Int?
+  parent      Unit?       @relation("UnitTree", fields: [parentId], references: [id])
+  children    Unit[]      @relation("UnitTree")
+
+  address     String?
+  memberCount Int         @default(0) // số Đoàn viên quản lý (dùng cho báo cáo theo khu vực)
+  isActive    Boolean     @default(true)
+
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  secretaries Secretary[]
+  users       User[]
+
+  @@index([parentId])
+  @@index([level])
+  @@index([name])
+}
+
+// Hồ sơ Bí thư / Phó Bí thư Đoàn cơ sở
+model Secretary {
+  id              Int               @id @default(autoincrement())
+  userId          Int?              @unique
+  user            User?             @relation(fields: [userId], references: [id])
+  unitId          Int
+  unit            Unit              @relation(fields: [unitId], references: [id])
+
+  // Thông tin cá nhân
+  fullName        String
+  dob             DateTime          @db.Date
+  gender          Gender
+  phone           String
+  email           String?
+  cccd            String            @unique
+  cccdIssuedDate  DateTime?         @db.Date
+  cccdIssuedPlace String?
+  ethnicity       String?
+  religion        String?
+  address         String?
+  education       String?           // trình độ văn hóa (vd. Hệ 12/12)
+  training        String?           // trình độ chuyên môn (vd. Cử nhân)
+  maritalStatus   String?
+  avatarUrl       String?
+
+  // Theo màn hình "Cập nhật thông tin cán bộ đoàn"
+  memberCode        String?         // mã định danh đoàn viên
+  politicalTheory   String?         // lý luận chính trị
+  itLevel           String?         // trình độ tin học
+  language          String?         // ngoại ngữ
+  hometownProvince  String?         // quê quán (tỉnh/thành)
+  hometownWard      String?         // quê quán (xã/phường)
+  residenceProvince String?         // thường trú (tỉnh/thành)
+  residenceWard     String?         // thường trú (xã/phường)
+  unionJoinDate     DateTime?       @db.Date // thời gian vào Đoàn
+  unionJoinPlace    String?         // nơi vào Đoàn
+  cardIssuePlace    String?         // nơi cấp thẻ
+  partyJoinDate     DateTime?       @db.Date // thời gian vào Đảng
+  partyPosition     String?         // chức vụ Đảng
+  association       String?         // hiệp hội
+  occupation        String?         // nghề nghiệp hiện nay
+
+  // Chức vụ / nhiệm kỳ
+  position        SecretaryPosition @default(BI_THU)
+  termStart       DateTime          @db.Date
+  termEnd         DateTime?         @db.Date
+  termLabel       String?           // ví dụ "2024 - 2027"
+  status          SecretaryStatus   @default(ACTIVE)
+
+  // Xóa mềm: giữ lịch sử nhiệm kỳ
+  deletedAt       DateTime?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  @@index([unitId, position])
+  @@index([fullName])
+  @@index([phone])
+  @@index([status, deletedAt])
+  @@index([termStart, termEnd])
+}
+
+// Nhật ký hoạt động: mọi thao tác thêm/sửa/xóa/xem/tìm/xuất
+model AuditLog {
+  id        Int         @id @default(autoincrement())
+  userId    Int
+  user      User        @relation(fields: [userId], references: [id])
+  action    AuditAction
+  target    String      // ví dụ "Secretary"
+  targetId  Int?
+  detail    Json?
+  ip        String?
+  createdAt DateTime    @default(now())
+
+  @@index([userId, createdAt])
+  @@index([action, createdAt])
+  @@index([target, targetId])
+}

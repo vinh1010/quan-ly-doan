@@ -1,0 +1,26 @@
+# Render Blueprint: một web service phục vụ cả API lẫn giao diện (client/dist).
+# Database: tạo PostgreSQL miễn phí trên Neon/Supabase rồi dán chuỗi kết nối vào DATABASE_URL.
+services:
+  - type: web
+    name: quan-ly-doan
+    runtime: node
+    plan: free
+    buildCommand: npm install --include=dev && npm run build
+    preDeployCommand: npm run db:deploy -w server
+    startCommand: npm run start -w server
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: 20
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRES_IN
+        value: 8h
+      - key: SEED_USERNAME
+        sync: false
+      - key: SEED_PASSWORD
+        sync: false
+      - key: SEED_SAMPLES
+        value: "false"

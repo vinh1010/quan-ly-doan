@@ -1,0 +1,19 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Chạy cả FE + BE (npm run dev)",
+      "type": "node-terminal",
+      "request": "launch",
+      "command": "npm run dev",
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "name": "Debug Server",
+      "type": "node-terminal",
+      "request": "launch",
+      "command": "npm run dev -w server",
+      "cwd": "${workspaceFolder}"
+    }
+  ]
+}
