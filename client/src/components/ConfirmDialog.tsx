@@ -4,12 +4,13 @@ interface Props {
   title: string;
   children?: ReactNode;
   busy?: boolean;
+  confirmLabel?: string;
   onConfirm: () => void;
   onCancel: () => void;
 }
 
 // Theo mẫu tham khảo: "Bạn có chắc chắn xóa ?" — ĐỒNG Ý (cam) / THOÁT (xanh)
-export default function ConfirmDialog({ title, children, busy, onConfirm, onCancel }: Props) {
+export default function ConfirmDialog({ title, children, busy, confirmLabel = "Đồng ý", onConfirm, onCancel }: Props) {
   return (
     <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4" role="dialog" aria-modal="true">
       <div className="w-full max-w-sm rounded bg-white p-6 text-center shadow-xl">
@@ -21,7 +22,7 @@ export default function ConfirmDialog({ title, children, busy, onConfirm, onCanc
             disabled={busy}
             className="w-28 rounded-sm bg-[#ff9800] py-2 text-xs font-bold uppercase text-white hover:opacity-90 disabled:opacity-60"
           >
-            {busy ? "Đang xử lý..." : "Đồng ý"}
+            {busy ? "Đang xử lý..." : confirmLabel}
           </button>
           <button
             onClick={onCancel}

@@ -46,6 +46,10 @@ const TrashIcon = (
   </svg>
 );
 
+/** Giống quy tắc RB5 ở server: đang hoạt động và chưa hết nhiệm kỳ thì không được xóa. */
+const isInTerm = (s: Secretary) =>
+  s.status === "ACTIVE" && (!s.termEnd || new Date(s.termEnd) >= new Date());
+
 export default function SecretaryList() {
   const { user } = useAuth();
   const [params, setParams] = useSearchParams();
@@ -305,7 +309,25 @@ export default function SecretaryList() {
         />
       )}
 
-      {toDelete && (
+      {toDelete && isInTerm(toDelete) && (
+        <ConfirmDialog
+          title="Không thể xóa cán bộ đang tại chức"
+          confirmLabel="Sửa nhiệm kỳ"
+          onCancel={() => setToDelete(null)}
+          onConfirm={() => {
+            setModal({ mode: "edit", id: toDelete.id });
+            setToDelete(null);
+          }}
+        >
+          <p className="font-medium text-slate-800">{toDelete.fullName}</p>
+          <p>{toDelete.unit.name}</p>
+          <p>
+            Hãy đổi trạng thái sang “Đã kết thúc” (và nhập ngày kết thúc nhiệm kỳ) rồi xóa lại.
+          </p>
+        </ConfirmDialog>
+      )}
+
+      {toDelete && !isInTerm(toDelete) && (
         <ConfirmDialog
           title="Bạn có chắc chắn xóa ?"
           busy={remove.isPending}
