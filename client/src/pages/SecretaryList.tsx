@@ -9,6 +9,7 @@ import {
   type Secretary,
   type SecretaryFilters,
 } from "../api/secretaries";
+import Avatar from "../components/Avatar";
 import CccdDialog from "../components/CccdDialog";
 import ConfirmDialog from "../components/ConfirmDialog";
 import SecretaryModal, { type ModalMode } from "../components/SecretaryModal";
@@ -200,9 +201,12 @@ export default function SecretaryList() {
           {items.map((s) => (
             <div key={s.id} className="rounded border border-slate-200 p-3">
               <div className="flex items-start justify-between gap-2">
-                <button onClick={() => setModal({ mode: "view", id: s.id })} className="text-left text-sm font-bold uppercase text-[#1e88e5]">
-                  {s.fullName}
-                </button>
+                <div className="flex min-w-0 items-center gap-3">
+                  <Avatar src={s.avatarUrl} name={s.fullName} size={44} />
+                  <button onClick={() => setModal({ mode: "view", id: s.id })} className="text-left text-sm font-bold uppercase text-[#1e88e5]">
+                    {s.fullName}
+                  </button>
+                </div>
                 <span className="inline-flex shrink-0 gap-1.5">
                   <IconButton label={`Sửa ${s.fullName}`} onClick={() => setModal({ mode: "edit", id: s.id })}>
                     {PencilIcon}
@@ -279,9 +283,12 @@ export default function SecretaryList() {
               <tr key={s.id} className="border-b bg-white hover:bg-slate-50">
                 <td className={CELL + " text-center"}>{(applied.page - 1) * PAGE_SIZE + idx + 1}</td>
                 <td className={CELL}>
-                  <button onClick={() => setModal({ mode: "view", id: s.id })} className="text-left font-bold uppercase hover:text-[#1e88e5] hover:underline">
-                    {s.fullName}
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <Avatar src={s.avatarUrl} name={s.fullName} size={36} />
+                    <button onClick={() => setModal({ mode: "view", id: s.id })} className="text-left font-bold uppercase hover:text-[#1e88e5] hover:underline">
+                      {s.fullName}
+                    </button>
+                  </div>
                 </td>
                 <td className={CELL + " text-center"}>
                   {POSITION_LABEL[s.position]}

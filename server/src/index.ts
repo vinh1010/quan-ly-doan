@@ -17,7 +17,7 @@ const app = express();
 app.set("trust proxy", 1); // chạy sau proxy của host (Render, Railway...) để lấy đúng IP
 app.use(helmet());
 app.use(cors({ origin: process.env.CLIENT_ORIGIN ?? "http://localhost:5173" }));
-app.use(express.json());
+app.use(express.json({ limit: "400kb" })); // đủ cho ảnh đại diện đã nén (data URL ~300KB)
 
 app.get("/api/health", (_req, res) => res.json({ status: "ok" }));
 

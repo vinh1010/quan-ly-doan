@@ -34,7 +34,22 @@ const passwordRule = z
   .regex(/[A-Za-z]/, "Mật khẩu phải có chữ")
   .regex(/\d/, "Mật khẩu phải có số");
 
+// Ảnh đại diện lưu trực tiếp trong DB dưới dạng data URL (client đã nén về ~256px), tối đa ~220KB.
+// Không gửi trường này = giữ ảnh cũ; gửi "" hoặc null = xóa ảnh.
+const avatarField = z
+  .union([
+    z
+      .string()
+      .max(300_000, "Ảnh quá lớn")
+      .regex(/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/]+={0,2}$/, "Ảnh không hợp lệ"),
+    z.literal(""),
+    z.null(),
+  ])
+  .optional()
+  .transform((v) => (v === undefined ? undefined : v || null));
+
 const profileShape = {
+  avatarUrl: avatarField,
   fullName: z.string({ required_error: "Vui lòng nhập họ tên" }).trim().min(1, "Vui lòng nhập họ tên").max(150),
   dob: dateStr("ngày sinh"),
   gender: z.enum(["MALE", "FEMALE", "OTHER"], { errorMap: () => ({ message: "Vui lòng chọn giới tính" }) }),
@@ -157,6 +172,7 @@ const dateOrNull = (v: string | null) => (v ? new Date(v) : null);
 
 function profileData(v: z.infer<z.ZodObject<typeof profileShape>>) {
   return {
+    avatarUrl: v.avatarUrl,
     fullName: v.fullName,
     dob: new Date(v.dob),
     gender: v.gender,

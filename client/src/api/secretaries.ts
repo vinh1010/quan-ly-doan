@@ -13,6 +13,7 @@ export interface UnitOption {
 
 export interface Secretary {
   id: number;
+  avatarUrl: string | null;
   fullName: string;
   dob: string;
   gender: Gender;
@@ -68,6 +69,7 @@ export interface SecretaryFilters {
 }
 
 export interface SecretaryInput {
+  avatarUrl: string;
   fullName: string;
   dob: string;
   gender: Gender | "";

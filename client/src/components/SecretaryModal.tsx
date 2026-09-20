@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent, type ReactNode } from "react";
+import { useEffect, useState, type ChangeEvent, type FormEvent, type ReactNode } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import {
   createSecretary,
@@ -10,6 +10,8 @@ import {
   type SecretaryInput,
 } from "../api/secretaries";
 import { useToast } from "./Toast";
+import Avatar from "./Avatar";
+import { resizeToAvatar } from "../lib/avatar";
 import { toDateInput } from "../lib/constants";
 
 export type ModalMode = "create" | "edit" | "view";
@@ -24,7 +26,7 @@ interface Props {
 }
 
 const EMPTY: SecretaryInput = {
-  fullName: "", dob: "", gender: "", phone: "", email: "", cccd: "", cccdIssuedDate: "", cccdIssuedPlace: "",
+  avatarUrl: "", fullName: "", dob: "", gender: "", phone: "", email: "", cccd: "", cccdIssuedDate: "", cccdIssuedPlace: "",
   ethnicity: "Kinh", religion: "", address: "", education: "", training: "", maritalStatus: "",
   memberCode: "", politicalTheory: "", itLevel: "", language: "",
   hometownProvince: "", hometownWard: "", residenceProvince: "", residenceWard: "",
@@ -36,7 +38,7 @@ const EMPTY: SecretaryInput = {
 function fromSecretary(s: Secretary): SecretaryInput {
   const t = (v: string | null) => v ?? "";
   return {
-    fullName: s.fullName, dob: toDateInput(s.dob), gender: s.gender, phone: s.phone, email: t(s.email), cccd: s.cccd,
+    avatarUrl: t(s.avatarUrl), fullName: s.fullName, dob: toDateInput(s.dob), gender: s.gender, phone: s.phone, email: t(s.email), cccd: s.cccd,
     cccdIssuedDate: toDateInput(s.cccdIssuedDate), cccdIssuedPlace: t(s.cccdIssuedPlace), ethnicity: t(s.ethnicity),
     religion: t(s.religion), address: t(s.address), education: t(s.education), training: t(s.training),
     maritalStatus: t(s.maritalStatus), memberCode: t(s.memberCode), politicalTheory: t(s.politicalTheory),
@@ -78,6 +80,7 @@ export default function SecretaryModal({ mode, secretaryId, cccd, unitId, onClos
   const [form, setForm] = useState<SecretaryInput>({ ...EMPTY, cccd: cccd ?? "", unitId: unitId ?? "" });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState("");
+  const [avatarError, setAvatarError] = useState("");
 
   const units = useQuery({ queryKey: ["units"], queryFn: () => fetchUnits() });
   const existing = useQuery({
@@ -107,6 +110,19 @@ export default function SecretaryModal({ mode, secretaryId, cccd, unitId, onClos
   const set = <K extends keyof SecretaryInput>(k: K) => (e: { target: { value: string } }) => {
     setForm((f) => ({ ...f, [k]: e.target.value as SecretaryInput[K] }));
     setErrors((er) => (er[k] ? { ...er, [k]: "" } : er));
+  };
+
+  const pickAvatar = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // cho phép chọn lại đúng file đó sau khi xóa
+    if (!file) return;
+    setAvatarError("");
+    try {
+      const avatarUrl = await resizeToAvatar(file);
+      setForm((f) => ({ ...f, avatarUrl }));
+    } catch (err) {
+      setAvatarError((err as Error).message);
+    }
   };
 
   const submit = (e: FormEvent) => {
@@ -159,6 +175,30 @@ export default function SecretaryModal({ mode, secretaryId, cccd, unitId, onClos
           <div className="p-10 text-center text-red-600">Không tìm thấy Bí thư</div>
         ) : (
           <form onSubmit={submit} noValidate className="px-4 py-5 sm:px-8 sm:py-6">
+            <div className="mb-5 flex items-center gap-4">
+              <Avatar src={form.avatarUrl} name={form.fullName || "?"} size={88} />
+              {!readOnly && (
+                <div className="no-print space-y-1.5">
+                  <div className="flex flex-wrap gap-2">
+                    <label className="cursor-pointer rounded-sm bg-[#3d7ebf] px-4 py-2 text-xs font-bold uppercase text-white hover:opacity-90">
+                      {form.avatarUrl ? "Đổi ảnh" : "Chọn ảnh"}
+                      <input type="file" accept="image/*" className="sr-only" onChange={pickAvatar} />
+                    </label>
+                    {form.avatarUrl && (
+                      <button
+                        type="button"
+                        onClick={() => setForm((f) => ({ ...f, avatarUrl: "" }))}
+                        className="rounded-sm bg-[#a5a5a5] px-4 py-2 text-xs font-bold uppercase text-white hover:opacity-90"
+                      >
+                        Xóa ảnh
+                      </button>
+                    )}
+                  </div>
+                  <p className="text-xs text-slate-400">Ảnh JPG, PNG; tự cắt vuông và thu nhỏ.</p>
+                  {(avatarError || err("avatarUrl")) && <p className="text-xs text-red-600">{avatarError || err("avatarUrl")}</p>}
+                </div>
+              )}
+            </div>
             <div className="grid gap-x-6 gap-y-4 sm:grid-cols-2 lg:grid-cols-4">
               <Field label="Mã định danh đoàn viên" error={err("memberCode")}>{text("memberCode")}</Field>
               <Field label="Họ tên" required error={err("fullName")}>{text("fullName")}</Field>
