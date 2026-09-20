@@ -188,7 +188,57 @@ export default function SecretaryList() {
       </form>
 
       <div className="overflow-x-auto px-4 py-5 sm:px-[43px]">
-        <table className="w-full min-w-[1200px] border-collapse text-left">
+        {/* Điện thoại: hiển thị dạng thẻ thay cho bảng 15 cột */}
+        <div className="space-y-3 md:hidden">
+          <button
+            type="button"
+            onClick={() => setAskCccd(true)}
+            className="w-full rounded-sm bg-[#2196f3] py-2.5 text-xs font-bold uppercase text-white hover:opacity-90"
+          >
+            + Thêm mới cán bộ
+          </button>
+          {items.map((s) => (
+            <div key={s.id} className="rounded border border-slate-200 p-3">
+              <div className="flex items-start justify-between gap-2">
+                <button onClick={() => setModal({ mode: "view", id: s.id })} className="text-left text-sm font-bold uppercase text-[#1e88e5]">
+                  {s.fullName}
+                </button>
+                <span className="inline-flex shrink-0 gap-1.5">
+                  <IconButton label={`Sửa ${s.fullName}`} onClick={() => setModal({ mode: "edit", id: s.id })}>
+                    {PencilIcon}
+                  </IconButton>
+                  <IconButton label={`Xóa ${s.fullName}`} onClick={() => setToDelete(s)}>
+                    {TrashIcon}
+                  </IconButton>
+                </span>
+              </div>
+              <dl className="mt-2 grid grid-cols-[88px_1fr] gap-x-2 gap-y-1 text-[13px]">
+                <dt className="text-slate-500">Chức vụ</dt>
+                <dd>
+                  {POSITION_LABEL[s.position]}
+                  {s.status === "ENDED" && <span className="text-slate-400"> ({STATUS_LABEL.ENDED})</span>}
+                </dd>
+                <dt className="text-slate-500">Đơn vị</dt>
+                <dd>{s.unit.name}</dd>
+                <dt className="text-slate-500">Ngày sinh</dt>
+                <dd>{formatDate(s.dob)}</dd>
+                <dt className="text-slate-500">Điện thoại</dt>
+                <dd>{s.phone}</dd>
+                {s.email && (
+                  <>
+                    <dt className="text-slate-500">Email</dt>
+                    <dd className="break-all">{s.email}</dd>
+                  </>
+                )}
+              </dl>
+            </div>
+          ))}
+          {!list.isFetching && items.length === 0 && (
+            <p className="py-8 text-center text-slate-500">{list.isError ? "Không thể tải dữ liệu" : "Không tìm thấy kết quả"}</p>
+          )}
+        </div>
+
+        <table className="hidden w-full min-w-[1200px] border-collapse text-left md:table">
           <thead className="bg-[#2260cf] text-white">
             <tr>
               <th rowSpan={2} className={HEAD + " w-10"}>#</th>
