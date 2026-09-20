@@ -113,8 +113,8 @@ export default function SecretaryModal({ mode, secretaryId, cccd, unitId, onClos
   };
 
   const pickAvatar = async (e: ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    e.target.value = ""; // cho phép chọn lại đúng file đó sau khi xóa
+    const input = e.target;
+    const file = input.files?.[0];
     if (!file) return;
     setAvatarError("");
     try {
@@ -122,6 +122,9 @@ export default function SecretaryModal({ mode, secretaryId, cccd, unitId, onClos
       setForm((f) => ({ ...f, avatarUrl }));
     } catch (err) {
       setAvatarError((err as Error).message);
+    } finally {
+      // chỉ làm mới ô chọn SAU khi đã đọc xong (làm trước sẽ mất file trên Safari iOS)
+      input.value = "";
     }
   };
 
@@ -182,7 +185,12 @@ export default function SecretaryModal({ mode, secretaryId, cccd, unitId, onClos
                   <div className="flex flex-wrap gap-2">
                     <label className="cursor-pointer rounded-sm bg-[#3d7ebf] px-4 py-2 text-xs font-bold uppercase text-white hover:opacity-90">
                       {form.avatarUrl ? "Đổi ảnh" : "Chọn ảnh"}
-                      <input type="file" accept="image/*" className="sr-only" onChange={pickAvatar} />
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp"
+                        className="sr-only"
+                        onChange={pickAvatar}
+                      />
                     </label>
                     {form.avatarUrl && (
                       <button
