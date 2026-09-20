@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
+import ChangePasswordModal from "./ChangePasswordModal";
 
 const CRUMBS: Record<string, string> = {
   "/": "TRANG CHỦ",
@@ -18,6 +19,7 @@ export default function Layout() {
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [pwOpen, setPwOpen] = useState(false);
 
   const handleLogout = async () => {
     await logout();
@@ -44,6 +46,9 @@ export default function Layout() {
             <div>{user?.unit?.name ?? user?.username}</div>
             <div className="text-xs text-white/70">{user?.fullName}</div>
           </div>
+          <button onClick={() => setPwOpen(true)} className="rounded border border-white/40 px-3 py-1 text-xs hover:bg-white/10">
+            Đổi mật khẩu
+          </button>
           <button onClick={handleLogout} className="rounded border border-white/40 px-3 py-1 text-xs hover:bg-white/10">
             Đăng xuất
           </button>
@@ -91,6 +96,8 @@ export default function Layout() {
       <main className="px-4 pb-8">
         <Outlet />
       </main>
+
+      {pwOpen && <ChangePasswordModal onClose={() => setPwOpen(false)} />}
     </div>
   );
 }
