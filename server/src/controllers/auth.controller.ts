@@ -4,6 +4,9 @@ import jwt from "jsonwebtoken";
 import { z } from "zod";
 import { prisma } from "../prisma";
 
+const MAX_FAILED_LOGINS = 5;
+const LOCK_MINUTES = 15;
+
 const loginSchema = z.object({
   username: z.string().trim().min(1, "Vui lòng nhập tên đăng nhập"),
   password: z.string().min(1, "Vui lòng nhập mật khẩu"),
@@ -31,8 +34,24 @@ export async function login(req: Request, res: Response) {
     where: { username },
     include: { unit: { select: { id: true, name: true } } },
   });
+  if (user?.lockedUntil && user.lockedUntil > new Date()) {
+    const minutes = Math.ceil((user.lockedUntil.getTime() - Date.now()) / 60000);
+    return res.status(429).json({ message: `Nhập sai quá nhiều lần. Vui lòng thử lại sau ${minutes} phút` });
+  }
   const ok = user && (await bcrypt.compare(password, user.passwordHash));
   if (!user || !ok || (role && user.role !== role)) {
+    if (user) {
+      // sai mật khẩu quá MAX_FAILED_LOGINS lần liên tiếp thì khóa tạm LOCK_MINUTES phút
+      const failed = user.failedLoginCount + 1;
+      const lock = failed >= MAX_FAILED_LOGINS;
+      await prisma.user.update({
+        where: { id: user.id },
+        data: {
+          failedLoginCount: lock ? 0 : failed,
+          lockedUntil: lock ? new Date(Date.now() + LOCK_MINUTES * 60000) : null,
+        },
+      });
+    }
     return res.status(401).json({ message: "Tên đăng nhập hoặc mật khẩu không đúng" });
   }
   if (user.status !== "ACTIVE") {
@@ -44,7 +63,10 @@ export async function login(req: Request, res: Response) {
     process.env.JWT_SECRET!,
     { expiresIn: (process.env.JWT_EXPIRES_IN ?? "8h") as jwt.SignOptions["expiresIn"] },
   );
-  await prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } });
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { lastLoginAt: new Date(), failedLoginCount: 0, lockedUntil: null },
+  });
   await prisma.auditLog.create({
     data: { userId: user.id, action: "LOGIN", target: user.username },
   });
