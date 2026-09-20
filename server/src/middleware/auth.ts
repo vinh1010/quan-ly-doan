@@ -7,6 +7,7 @@ export interface AuthPayload {
   sub: number;
   username: string;
   role: string;
+  unitId?: number | null; // đơn vị của người dùng, lấy từ DB (dùng để giới hạn phạm vi địa bàn)
   iat?: number; // giây, do jsonwebtoken tự thêm
 }
 
@@ -36,7 +37,7 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
   try {
     const user = await prisma.user.findUnique({
       where: { id: payload.sub },
-      select: { status: true, role: true, passwordChangedAt: true },
+      select: { status: true, role: true, unitId: true, passwordChangedAt: true },
     });
     if (!user || user.status !== "ACTIVE") {
       return res.status(401).json({ message: "Tài khoản không còn hiệu lực" });
@@ -44,8 +45,8 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
     if (user.passwordChangedAt && Math.floor(user.passwordChangedAt.getTime() / 1000) > (payload.iat ?? 0)) {
       return res.status(401).json({ message: "Mật khẩu đã thay đổi, vui lòng đăng nhập lại" });
     }
-    // lấy vai trò từ DB để đổi vai trò có hiệu lực ngay, không phụ thuộc token cũ
-    req.auth = { ...payload, role: user.role };
+    // lấy vai trò và đơn vị từ DB để thay đổi có hiệu lực ngay, không phụ thuộc token cũ
+    req.auth = { ...payload, role: user.role, unitId: user.unitId };
     next();
   } catch (e) {
     next(e);

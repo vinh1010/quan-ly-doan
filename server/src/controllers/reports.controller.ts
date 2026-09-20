@@ -3,7 +3,7 @@ import ExcelJS from "exceljs";
 import { z } from "zod";
 import { prisma } from "../prisma";
 import { audit } from "../lib/http";
-import { unitWithDescendants } from "./units.controller";
+import { narrowUnits, scopeOf, unitWithDescendants } from "./units.controller";
 
 const query = z.object({ unitId: z.coerce.number().int().positive().optional() });
 
@@ -25,10 +25,9 @@ export interface AreaRow {
  * và số Đoàn viên quản lý (tổng của các đơn vị cơ sở trực thuộc).
  * Nếu chọn một đơn vị thì chỉ thống kê các khu vực nằm trong đơn vị đó.
  */
-async function buildAreaReport(unitId?: number): Promise<AreaRow[]> {
-  const scope = unitId ? await unitWithDescendants(unitId) : undefined;
+async function buildAreaReport(unitIds?: number[]): Promise<AreaRow[]> {
   const areas = await prisma.unit.findMany({
-    where: { level: "XA_PHUONG", isActive: true, ...(scope ? { id: { in: scope } } : {}) },
+    where: { level: "XA_PHUONG", isActive: true, ...(unitIds ? { id: { in: unitIds } } : {}) },
     select: { id: true, name: true, parent: { select: { name: true } } },
     orderBy: { name: "asc" },
   });
@@ -63,10 +62,15 @@ async function buildAreaReport(unitId?: number): Promise<AreaRow[]> {
   });
 }
 
+/** Đơn vị được phép thống kê: đơn vị người dùng chọn (và con cháu) thu hẹp về phạm vi địa bàn của họ. */
+async function allowedUnits(req: Request, unitId?: number) {
+  return narrowUnits(await scopeOf(req), unitId ? await unitWithDescendants(unitId) : undefined);
+}
+
 export async function reportByArea(req: Request, res: Response) {
   const parsed = query.safeParse(req.query);
   if (!parsed.success) return res.status(400).json({ message: "Đơn vị không hợp lệ" });
-  const items = await buildAreaReport(parsed.data.unitId);
+  const items = await buildAreaReport(await allowedUnits(req, parsed.data.unitId));
   const total = items.reduce(
     (t, r) => ({ secretaries: t.secretaries + r.secretaries, deputies: t.deputies + r.deputies, members: t.members + r.members }),
     { secretaries: 0, deputies: 0, members: 0 },
@@ -89,10 +93,10 @@ export async function exportReport(req: Request, res: Response) {
   if (!parsed.success) return res.status(400).json({ message: "Đơn vị không hợp lệ" });
   const { unitId } = parsed.data;
 
-  const rows = await buildAreaReport(unitId);
-  const scope = unitId ? await unitWithDescendants(unitId) : undefined;
+  const unitIds = await allowedUnits(req, unitId);
+  const rows = await buildAreaReport(unitIds);
   const list = await prisma.secretary.findMany({
-    where: { deletedAt: null, ...(scope ? { unitId: { in: scope } } : {}) },
+    where: { deletedAt: null, ...(unitIds ? { unitId: { in: unitIds } } : {}) },
     include: { unit: { select: { name: true } } },
     orderBy: [{ unit: { name: "asc" } }, { position: "asc" }, { fullName: "asc" }],
   });

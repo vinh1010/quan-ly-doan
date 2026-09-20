@@ -4,7 +4,9 @@ import { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { prisma } from "../prisma";
 import { audit } from "../lib/http";
-import { unitWithDescendants } from "./units.controller";
+import { inScope, narrowUnits, scopeOf, unitWithDescendants } from "./units.controller";
+
+const OUT_OF_SCOPE = "Bạn không có quyền thao tác trên đơn vị này";
 
 // ---------- Validation ----------
 
@@ -240,7 +242,10 @@ export async function listSecretaries(req: Request, res: Response) {
   if (q.phone) where.phone = { contains: q.phone };
   if (q.cccd) where.cccd = { contains: q.cccd };
   if (q.status) where.status = q.status;
-  if (q.unitId) where.unitId = { in: await unitWithDescendants(q.unitId) };
+  // chỉ trong phạm vi địa bàn của người dùng; đơn vị chọn ngoài phạm vi cho ra danh sách rỗng
+  const scope = await scopeOf(req);
+  const unitIds = narrowUnits(scope, q.unitId ? await unitWithDescendants(q.unitId) : undefined);
+  if (unitIds) where.unitId = { in: unitIds };
   // nhiệm kỳ bắt đầu trong khoảng [termFrom, termTo]
   if (q.termFrom || q.termTo) {
     where.termStart = {
@@ -268,10 +273,12 @@ export async function getSecretary(req: Request, res: Response) {
   const id = Number(req.params.id);
   if (!Number.isInteger(id)) return res.status(400).json({ message: "Mã không hợp lệ" });
 
+  const scope = await scopeOf(req);
   const item = await prisma.secretary.findFirst({
-    where: { id, deletedAt: null },
+    where: { id, deletedAt: null, ...(scope ? { unitId: { in: scope } } : {}) },
     include: listInclude,
   });
+  // ngoài phạm vi cũng trả 404 để không lộ việc bản ghi có tồn tại
   if (!item) return res.status(404).json({ message: "Không tìm thấy Bí thư" });
 
   // số đoàn viên quản lý của đơn vị (dùng cho màn xem chi tiết)
@@ -287,6 +294,9 @@ export async function createSecretary(req: Request, res: Response) {
 
   const unit = await prisma.unit.findUnique({ where: { id: v.unitId } });
   if (!unit) return res.status(400).json({ message: "Đơn vị không tồn tại", errors: { unitId: "Đơn vị không tồn tại" } });
+  if (!inScope(await scopeOf(req), v.unitId)) {
+    return res.status(403).json({ message: OUT_OF_SCOPE, errors: { unitId: OUT_OF_SCOPE } });
+  }
 
   try {
     const passwordHash = await bcrypt.hash(v.password, 10);
@@ -322,8 +332,15 @@ export async function updateSecretary(req: Request, res: Response) {
   if (!parsed.success) return sendValidationError(res, parsed.error);
   const v = parsed.data;
 
-  const current = await prisma.secretary.findFirst({ where: { id, deletedAt: null } });
+  const scope = await scopeOf(req);
+  const current = await prisma.secretary.findFirst({
+    where: { id, deletedAt: null, ...(scope ? { unitId: { in: scope } } : {}) },
+  });
   if (!current) return res.status(404).json({ message: "Không tìm thấy Bí thư" });
+  // không được chuyển hồ sơ sang đơn vị ngoài phạm vi của mình
+  if (!inScope(scope, v.unitId)) {
+    return res.status(403).json({ message: OUT_OF_SCOPE, errors: { unitId: OUT_OF_SCOPE } });
+  }
 
   try {
     const item = await prisma.$transaction(async (tx) => {
@@ -355,7 +372,10 @@ export async function deleteSecretary(req: Request, res: Response) {
   const id = Number(req.params.id);
   if (!Number.isInteger(id)) return res.status(400).json({ message: "Mã không hợp lệ" });
 
-  const current = await prisma.secretary.findFirst({ where: { id, deletedAt: null } });
+  const scope = await scopeOf(req);
+  const current = await prisma.secretary.findFirst({
+    where: { id, deletedAt: null, ...(scope ? { unitId: { in: scope } } : {}) },
+  });
   if (!current) return res.status(404).json({ message: "Không tìm thấy Bí thư" });
 
   const today = new Date();

@@ -3,7 +3,7 @@ import { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { prisma } from "../prisma";
 import { audit } from "../lib/http";
-import { unitWithDescendants } from "./units.controller";
+import { narrowUnits, scopeOf, unitWithDescendants } from "./units.controller";
 
 const listQuery = z.object({
   search: z.string().trim().optional(),
@@ -35,7 +35,8 @@ export async function listAccounts(req: Request, res: Response) {
 
   const where: Prisma.UserWhereInput = { role: "SECRETARY" };
   if (q.status) where.status = q.status;
-  if (q.unitId) where.unitId = { in: await unitWithDescendants(q.unitId) };
+  const unitIds = narrowUnits(await scopeOf(req), q.unitId ? await unitWithDescendants(q.unitId) : undefined);
+  if (unitIds) where.unitId = { in: unitIds };
   if (q.search) {
     where.OR = [
       { username: { contains: q.search, mode: "insensitive" } },
@@ -65,8 +66,10 @@ export async function setAccountStatus(req: Request, res: Response) {
   if (!parsed.success) return res.status(400).json({ message: parsed.error.issues[0].message });
   const { status } = parsed.data;
 
+  const scope = await scopeOf(req);
   const user = await prisma.user.findFirst({
-    where: { id, role: "SECRETARY" },
+    // tài khoản ngoài phạm vi địa bàn coi như không tồn tại
+    where: { id, role: "SECRETARY", ...(scope ? { unitId: { in: scope } } : {}) },
     select: { id: true, username: true, status: true, secretary: { select: { deletedAt: true } } },
   });
   if (!user) return res.status(404).json({ message: "Không tìm thấy tài khoản" });
