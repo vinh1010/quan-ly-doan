@@ -6,6 +6,7 @@ import Dashboard from "./pages/Dashboard";
 import SecretaryList from "./pages/SecretaryList";
 import Accounts from "./pages/Accounts";
 import AuditLogs from "./pages/AuditLogs";
+import Reports from "./pages/Reports";
 
 export default function App() {
   return (
@@ -17,7 +18,7 @@ export default function App() {
           <Route path="/secretaries" element={<SecretaryList />} />
           <Route path="/accounts" element={<Accounts />} />
           <Route path="/audit-logs" element={<AuditLogs />} />
-          {/* TODO: /reports */}
+          <Route path="/reports" element={<Reports />} />
         </Route>
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />

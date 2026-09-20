@@ -44,6 +44,36 @@ export interface AuditFilters {
 const clean = <T extends object>(o: T) =>
   Object.fromEntries(Object.entries(o).filter(([, v]) => v !== "" && v !== undefined));
 
+export interface AreaRow {
+  unitId: number;
+  name: string;
+  parentName: string | null;
+  secretaries: number;
+  deputies: number;
+  members: number;
+}
+
+export interface AreaReport {
+  items: AreaRow[];
+  total: { secretaries: number; deputies: number; members: number };
+}
+
+export const fetchAreaReport = (unitId?: string) =>
+  api.get<AreaReport>("/reports/by-area", { params: clean({ unitId }) }).then((r) => r.data);
+
+/** Tải file Excel (cần gửi kèm token nên không dùng thẻ <a href> trực tiếp) */
+export async function downloadReport(unitId?: string) {
+  const res = await api.get<Blob>("/reports/export", { params: clean({ unitId }), responseType: "blob" });
+  const url = URL.createObjectURL(res.data);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `bao-cao-bi-thu-${new Date().toISOString().slice(0, 10)}.xlsx`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
 export const fetchAccounts = (f: AccountFilters) =>
   api.get<{ items: Account[]; total: number }>("/accounts", { params: clean(f) }).then((r) => r.data);
 
