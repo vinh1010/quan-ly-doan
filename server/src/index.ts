@@ -4,6 +4,7 @@ import express, { type NextFunction, type Request, type Response } from "express
 import helmet from "helmet";
 import fs from "node:fs";
 import path from "node:path";
+import { prisma } from "./prisma";
 import authRoutes from "./routes/auth";
 import { secretaryRoutes, unitRoutes } from "./routes/secretaries";
 import { accountRoutes, auditLogRoutes } from "./routes/system";
@@ -19,6 +20,18 @@ app.use(cors({ origin: process.env.CLIENT_ORIGIN ?? "http://localhost:5173" }));
 app.use(express.json());
 
 app.get("/api/health", (_req, res) => res.json({ status: "ok" }));
+
+// Kiểm tra kết nối DB và bảng đã migrate chưa. Chỉ trả mã lỗi Prisma, không lộ chi tiết kết nối.
+app.get("/api/health/db", async (_req, res) => {
+  try {
+    const users = await prisma.user.count();
+    res.json({ db: "ok", users });
+  } catch (e) {
+    console.error("Kiểm tra DB lỗi:", e);
+    const code = (e as { code?: string }).code ?? (e as Error).name;
+    res.status(503).json({ db: "error", code });
+  }
+});
 app.use("/api/auth", authRoutes);
 app.use("/api/secretaries", secretaryRoutes);
 app.use("/api/units", unitRoutes);
