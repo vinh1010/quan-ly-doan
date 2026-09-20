@@ -74,6 +74,39 @@ export async function downloadReport(unitId?: string) {
   URL.revokeObjectURL(url);
 }
 
+export interface Officer {
+  id: number;
+  username: string;
+  fullName: string | null;
+  email: string | null;
+  role: "ADMIN" | "SUPERIOR";
+  status: AccountStatus;
+  lastLoginAt: string | null;
+  createdAt: string;
+  unit: { id: number; name: string; level: string } | null;
+}
+
+export interface OfficerInput {
+  username: string;
+  fullName: string;
+  email: string;
+  role: "ADMIN" | "SUPERIOR";
+  unitId: string;
+  password: string;
+  confirmPassword: string;
+}
+
+export const fetchOfficers = (f: { search?: string; status?: string; page: number; pageSize: number }) =>
+  api.get<{ items: Officer[]; total: number }>("/officers", { params: clean(f) }).then((r) => r.data);
+
+export const createOfficer = (v: OfficerInput) => api.post<{ message: string }>("/officers", v).then((r) => r.data);
+
+export const setOfficerStatus = (id: number, status: AccountStatus) =>
+  api.patch<{ message: string }>(`/officers/${id}/status`, { status }).then((r) => r.data);
+
+export const resetOfficerPassword = (id: number, password: string, confirmPassword: string) =>
+  api.post<{ message: string }>(`/officers/${id}/reset-password`, { password, confirmPassword }).then((r) => r.data);
+
 export const fetchAccounts = (f: AccountFilters) =>
   api.get<{ items: Account[]; total: number }>("/accounts", { params: clean(f) }).then((r) => r.data);
 

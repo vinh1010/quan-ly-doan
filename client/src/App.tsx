@@ -7,6 +7,7 @@ import SecretaryList from "./pages/SecretaryList";
 import Accounts from "./pages/Accounts";
 import AuditLogs from "./pages/AuditLogs";
 import Reports from "./pages/Reports";
+import Officers from "./pages/Officers";
 
 export default function App() {
   return (
@@ -17,6 +18,7 @@ export default function App() {
           <Route path="/" element={<Dashboard />} />
           <Route path="/secretaries" element={<SecretaryList />} />
           <Route path="/accounts" element={<Accounts />} />
+          <Route path="/officers" element={<Officers />} />
           <Route path="/audit-logs" element={<AuditLogs />} />
           <Route path="/reports" element={<Reports />} />
         </Route>

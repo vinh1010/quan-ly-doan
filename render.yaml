@@ -22,5 +22,10 @@ services:
         sync: false
       - key: SEED_PASSWORD
         sync: false
+      # tùy chọn: tạo tài khoản ADMIN đầu tiên (cần khai báo cả hai biến)
+      - key: SEED_ADMIN_USERNAME
+        sync: false
+      - key: SEED_ADMIN_PASSWORD
+        sync: false
       - key: SEED_SAMPLES
         value: "false"

@@ -29,6 +29,25 @@ async function main() {
     },
   });
 
+  // Tài khoản ADMIN đầu tiên (không giới hạn đơn vị): chỉ tạo khi khai báo cả tên và mật khẩu trong môi trường.
+  // Không ghi đè nếu đã tồn tại, nên đổi mật khẩu trên giao diện sẽ không bị seed đặt lại.
+  const adminName = process.env.SEED_ADMIN_USERNAME?.trim();
+  const adminPassword = process.env.SEED_ADMIN_PASSWORD;
+  if (adminName && adminPassword) {
+    await prisma.user.upsert({
+      where: { username: adminName },
+      update: {},
+      create: {
+        username: adminName,
+        passwordHash: await bcrypt.hash(adminPassword, 10),
+        role: "ADMIN",
+        fullName: "Quản trị hệ thống",
+        passwordChangedAt: new Date(),
+      },
+    });
+    console.log(`Tài khoản ADMIN: ${adminName}`);
+  }
+
   // Trên host công khai đặt SEED_SAMPLES=false để không tạo tài khoản mẫu (mật khẩu mẫu ai cũng đoán được)
   if (process.env.SEED_SAMPLES === "false") {
     console.log(`Seed xong (không có dữ liệu mẫu). Tài khoản cán bộ cấp trên: ${username}`);
