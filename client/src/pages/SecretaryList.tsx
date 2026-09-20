@@ -133,7 +133,7 @@ export default function SecretaryList() {
 
   return (
     <div className="bg-white shadow-sm">
-      <h1 className="border-b px-9 py-4 text-2xl font-light text-slate-800">Thống kê ban chấp hành đoàn</h1>
+      <h1 className="border-b px-4 py-4 text-xl font-light text-slate-800 sm:px-9 sm:text-2xl">Thống kê ban chấp hành đoàn</h1>
 
       <form onSubmit={search} className="px-4 pt-5 sm:px-[43px]">
         <div className="flex flex-wrap items-end gap-4">
@@ -189,11 +189,11 @@ export default function SecretaryList() {
 
       <div className="overflow-x-auto px-4 py-5 sm:px-[43px]">
         {/* Điện thoại: hiển thị dạng thẻ thay cho bảng 15 cột */}
-        <div className="space-y-3 md:hidden">
+        <div className="grid gap-3 sm:grid-cols-2 xl:hidden">
           <button
             type="button"
             onClick={() => setAskCccd(true)}
-            className="w-full rounded-sm bg-[#2196f3] py-2.5 text-xs font-bold uppercase text-white hover:opacity-90"
+            className="w-full rounded-sm bg-[#2196f3] py-2.5 text-xs font-bold uppercase text-white hover:opacity-90 sm:col-span-2"
           >
             + Thêm mới cán bộ
           </button>
@@ -234,11 +234,13 @@ export default function SecretaryList() {
             </div>
           ))}
           {!list.isFetching && items.length === 0 && (
-            <p className="py-8 text-center text-slate-500">{list.isError ? "Không thể tải dữ liệu" : "Không tìm thấy kết quả"}</p>
+            <p className="py-8 text-center text-slate-500 sm:col-span-2">
+              {list.isError ? "Không thể tải dữ liệu" : "Không tìm thấy kết quả"}
+            </p>
           )}
         </div>
 
-        <table className="hidden w-full min-w-[1200px] border-collapse text-left md:table">
+        <table className="hidden w-full min-w-[1100px] border-collapse text-left xl:table">
           <thead className="bg-[#2260cf] text-white">
             <tr>
               <th rowSpan={2} className={HEAD + " w-10"}>#</th>
@@ -320,7 +322,7 @@ export default function SecretaryList() {
           </tbody>
         </table>
 
-        <div className="mt-3 flex items-center justify-between text-sm text-slate-600">
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-sm text-slate-600">
           <span>
             {list.isFetching ? "Đang tải..." : `Tổng ${total} cán bộ · Trang ${applied.page}/${pages}`}
           </span>

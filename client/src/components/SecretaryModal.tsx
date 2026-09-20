@@ -145,7 +145,7 @@ export default function SecretaryModal({ mode, secretaryId, cccd, unitId, onClos
 
   return (
     <div className="print-root fixed inset-0 z-30 overflow-y-auto bg-black/40" role="dialog" aria-modal="true">
-      <div className="print-area mx-auto my-6 w-full max-w-6xl bg-white shadow-xl">
+      <div className="print-area mx-auto my-0 min-h-full w-full max-w-6xl bg-white shadow-xl sm:my-6 sm:min-h-0">
         <div className="flex items-center justify-between bg-[#eeeeee] px-4 py-5">
           <h2 className="text-lg text-slate-800">{title}</h2>
           <button onClick={onClose} className="no-print text-xl leading-none text-slate-500 hover:text-slate-800" aria-label="Đóng">
@@ -158,7 +158,7 @@ export default function SecretaryModal({ mode, secretaryId, cccd, unitId, onClos
         ) : existing.isError ? (
           <div className="p-10 text-center text-red-600">Không tìm thấy Bí thư</div>
         ) : (
-          <form onSubmit={submit} noValidate className="px-8 py-6">
+          <form onSubmit={submit} noValidate className="px-4 py-5 sm:px-8 sm:py-6">
             <div className="grid gap-x-6 gap-y-4 sm:grid-cols-2 lg:grid-cols-4">
               <Field label="Mã định danh đoàn viên" error={err("memberCode")}>{text("memberCode")}</Field>
               <Field label="Họ tên" required error={err("fullName")}>{text("fullName")}</Field>

@@ -93,7 +93,32 @@ export default function AuditLogs() {
       </form>
 
       <div className="overflow-x-auto px-4 py-5 sm:px-[43px]">
-        <table className="w-full min-w-[760px] border-collapse text-left">
+        {/* Điện thoại / máy tính bảng: dạng thẻ */}
+        <div className="grid gap-3 sm:grid-cols-2 lg:hidden">
+          {items.map((l) => (
+            <div key={l.id} className="rounded border border-slate-200 p-3 text-[13px]">
+              <div className="flex items-start justify-between gap-2">
+                <span className="font-bold">{ACTION_LABEL[l.action] ?? l.action}</span>
+                <span className="shrink-0 text-xs text-slate-500">{formatDateTime(l.createdAt)}</span>
+              </div>
+              <div className="mt-1 text-slate-600">
+                {l.user.fullName ? `${l.user.fullName} (${l.user.username})` : l.user.username}
+              </div>
+              <div className="text-slate-500">
+                {l.target}
+                {l.targetId ? ` #${l.targetId}` : ""}
+                {l.ip ? ` · ${l.ip}` : ""}
+              </div>
+            </div>
+          ))}
+          {!list.isFetching && items.length === 0 && (
+            <p className="py-8 text-center text-slate-500 sm:col-span-2">
+              {list.isError ? "Không thể tải dữ liệu" : "Không có nhật ký nào"}
+            </p>
+          )}
+        </div>
+
+        <table className="hidden w-full border-collapse text-left lg:table">
           <thead className="bg-[#2260cf] text-white">
             <tr>
               <th className={HEAD}>Thời gian</th>
@@ -126,7 +151,7 @@ export default function AuditLogs() {
           </tbody>
         </table>
 
-        <div className="mt-3 flex items-center justify-between text-sm text-slate-600">
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-sm text-slate-600">
           <span>{list.isFetching ? "Đang tải..." : `Tổng ${total} bản ghi · Trang ${applied.page}/${pages}`}</span>
           <div className="flex gap-2">
             <button

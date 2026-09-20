@@ -21,11 +21,11 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   return (
     <ToastContext.Provider value={push}>
       {children}
-      <div className="fixed right-4 top-4 z-50 space-y-2" role="status" aria-live="polite">
+      <div className="fixed left-4 right-4 top-4 z-50 space-y-2 sm:left-auto" role="status" aria-live="polite">
         {items.map((t) => (
           <div
             key={t.id}
-            className={`max-w-sm rounded px-4 py-2.5 text-sm text-white shadow-lg ${
+            className={`ml-auto max-w-sm rounded px-4 py-2.5 text-sm text-white shadow-lg ${
               t.kind === "success" ? "bg-green-600" : "bg-red-600"
             }`}
           >

@@ -62,7 +62,7 @@ export default function Accounts() {
           Tên đăng nhập / họ tên
           <input className={field} value={draft.search} onChange={(e) => setDraft({ ...draft, search: e.target.value })} />
         </label>
-        <label className="w-44 text-xs text-slate-500">
+        <label className="w-full text-xs text-slate-500 sm:w-44">
           Trạng thái
           <select className={field} value={draft.status} onChange={(e) => setDraft({ ...draft, status: e.target.value })}>
             <option value="">Tất cả</option>
@@ -70,16 +70,53 @@ export default function Accounts() {
             <option value="LOCKED">{ACCOUNT_STATUS_LABEL.LOCKED}</option>
           </select>
         </label>
-        <button type="submit" className="w-28 rounded-sm bg-[#3d7ebf] py-2 text-xs font-bold uppercase text-white hover:opacity-90">
+        <button type="submit" className="flex-1 rounded-sm bg-[#3d7ebf] py-2 text-xs font-bold uppercase text-white hover:opacity-90 sm:w-28 sm:flex-none">
           Tìm kiếm
         </button>
-        <button type="button" onClick={reset} className="w-28 rounded-sm bg-[#a5a5a5] py-2 text-xs font-bold uppercase text-white hover:opacity-90">
+        <button type="button" onClick={reset} className="flex-1 rounded-sm bg-[#a5a5a5] py-2 text-xs font-bold uppercase text-white hover:opacity-90 sm:w-28 sm:flex-none">
           Làm mới
         </button>
       </form>
 
       <div className="overflow-x-auto px-4 py-5 sm:px-[43px]">
-        <table className="w-full min-w-[820px] border-collapse text-left">
+        {/* Điện thoại / máy tính bảng: dạng thẻ */}
+        <div className="grid gap-3 sm:grid-cols-2 lg:hidden">
+          {items.map((a) => (
+            <div key={a.id} className="rounded border border-slate-200 p-3">
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <div className="break-all text-sm font-bold">{a.username}</div>
+                  <div className="text-[13px] text-slate-600">{a.fullName}</div>
+                </div>
+                <span className={`shrink-0 text-xs font-medium ${a.status === "ACTIVE" ? "text-green-700" : "text-red-600"}`}>
+                  {ACCOUNT_STATUS_LABEL[a.status]}
+                </span>
+              </div>
+              <dl className="mt-2 grid grid-cols-[96px_1fr] gap-x-2 gap-y-1 text-[13px]">
+                <dt className="text-slate-500">Đơn vị</dt>
+                <dd>{a.unit?.name}</dd>
+                <dt className="text-slate-500">Chức vụ</dt>
+                <dd>{a.secretary ? POSITION_LABEL[a.secretary.position] : ""}</dd>
+                <dt className="text-slate-500">Đăng nhập cuối</dt>
+                <dd>{a.lastLoginAt ? formatDate(a.lastLoginAt) : "Chưa đăng nhập"}</dd>
+              </dl>
+              <button
+                onClick={() => setTarget(a)}
+                disabled={a.status === "LOCKED" && !!a.secretary?.deletedAt}
+                className="mt-3 w-full rounded-sm bg-[#1e88e5] py-2 text-xs font-bold uppercase text-white hover:opacity-90 disabled:opacity-40"
+              >
+                {a.status === "ACTIVE" ? "Khóa tài khoản" : "Kích hoạt"}
+              </button>
+            </div>
+          ))}
+          {!list.isFetching && items.length === 0 && (
+            <p className="py-8 text-center text-slate-500 sm:col-span-2">
+              {list.isError ? "Không thể tải dữ liệu" : "Không tìm thấy kết quả"}
+            </p>
+          )}
+        </div>
+
+        <table className="hidden w-full border-collapse text-left lg:table">
           <thead className="bg-[#2260cf] text-white">
             <tr>
               <th className={HEAD + " w-10"}>#</th>
@@ -128,7 +165,7 @@ export default function Accounts() {
           </tbody>
         </table>
 
-        <div className="mt-3 flex items-center justify-between text-sm text-slate-600">
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-sm text-slate-600">
           <span>{list.isFetching ? "Đang tải..." : `Tổng ${total} tài khoản · Trang ${applied.page}/${pages}`}</span>
           <div className="flex gap-2">
             <button

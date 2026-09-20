@@ -4,8 +4,8 @@ import { fetchUnits, parseApiError } from "../api/secretaries";
 import { downloadReport, fetchAreaReport } from "../api/system";
 import { useToast } from "../components/Toast";
 
-const HEAD = "border border-white/30 px-3 py-2 text-center text-[13px] font-medium";
-const CELL = "px-3 py-3 text-[13px]";
+const HEAD = "border border-white/30 px-1.5 py-2 text-center text-xs font-medium sm:px-3 sm:text-[13px]";
+const CELL = "px-1.5 py-3 text-xs sm:px-3 sm:text-[13px]";
 const field =
   "mt-1 w-full border-0 border-b border-slate-300 bg-transparent py-1 text-sm outline-none focus:border-[#1890ff]";
 
@@ -58,7 +58,7 @@ export default function Reports() {
       </div>
 
       <div className="overflow-x-auto px-4 py-5 sm:px-[43px]">
-        <table className="w-full min-w-[640px] border-collapse text-left">
+        <table className="w-full border-collapse text-left">
           <thead className="bg-[#2260cf] text-white">
             <tr>
               <th className={HEAD + " w-10"}>#</th>

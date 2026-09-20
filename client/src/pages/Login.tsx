@@ -83,14 +83,14 @@ export default function Login() {
     }
   };
 
-  const fieldCls = "flex h-8 items-center gap-2 rounded-sm border border-slate-300 bg-white px-2 text-slate-500 focus-within:border-[#40a9ff] focus-within:shadow-[0_0_0_2px_rgba(24,144,255,0.2)]";
+  const fieldCls = "flex h-11 items-center gap-2 rounded-sm border border-slate-300 bg-white px-2 text-slate-500 focus-within:border-[#40a9ff] focus-within:shadow-[0_0_0_2px_rgba(24,144,255,0.2)] md:h-8";
   const inputCls = "min-w-0 flex-1 bg-transparent text-[13px] text-slate-900 outline-none";
 
   return (
     <div className="relative flex min-h-screen overflow-hidden bg-white">
       {/* Cột đăng nhập */}
-      <div className="relative z-10 flex w-full flex-col items-center bg-white px-6 md:w-[500px] md:shrink-0">
-        <div className="flex flex-1 flex-col items-center justify-center">
+      <div className="relative z-10 flex w-full flex-col items-center bg-white px-6 pb-28 md:w-[500px] md:shrink-0 md:pb-0">
+        <div className="flex flex-1 flex-col items-center justify-center py-6">
           <Emblem />
           <h1
             className="mt-2 text-center text-[15px] font-bold uppercase leading-tight"
@@ -152,7 +152,7 @@ export default function Login() {
             <button
               type="submit"
               disabled={submitting}
-              className="h-8 rounded-sm px-4 text-[13px] text-white hover:opacity-90 disabled:opacity-60"
+              className="h-11 w-full rounded-sm px-4 text-sm text-white hover:opacity-90 disabled:opacity-60 md:h-8 md:w-auto md:text-[13px]"
               style={{ backgroundColor: ACCENT }}
             >
               {submitting ? "Đang đăng nhập..." : "Đăng nhập"}
