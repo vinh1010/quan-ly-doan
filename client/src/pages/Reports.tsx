@@ -27,10 +27,10 @@ export default function Reports() {
   const total = report.data?.total;
 
   return (
-    <div className="bg-white shadow-sm">
+    <div className="print-area bg-white shadow-sm">
       <h1 className="border-b px-4 py-4 text-2xl font-light text-slate-800 sm:px-9">Báo cáo – Thống kê theo khu vực</h1>
 
-      <div className="flex flex-wrap items-end gap-4 px-4 pt-5 sm:px-[43px]">
+      <div className="no-print flex flex-wrap items-end gap-4 px-4 pt-5 sm:px-[43px]">
         <label className="min-w-[240px] max-w-[520px] flex-1 text-xs text-slate-500">
           Khu vực
           <select className={field} value={unitId} onChange={(e) => setUnitId(e.target.value)}>

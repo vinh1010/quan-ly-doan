@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { changePasswordApi } from "../api/auth";
+import { TOKEN_KEY, setToken } from "../api/axios";
 import { parseApiError } from "../api/secretaries";
 import { useToast } from "./Toast";
 
@@ -15,6 +16,8 @@ export default function ChangePasswordModal({ onClose }: { onClose: () => void }
   const change = useMutation({
     mutationFn: () => changePasswordApi(form),
     onSuccess: (r) => {
+      // giữ nguyên kiểu lưu phiên (ghi nhớ hay không) khi thay bằng token mới
+      setToken(r.token, !!localStorage.getItem(TOKEN_KEY));
       toast("success", r.message);
       onClose();
     },

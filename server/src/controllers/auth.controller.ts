@@ -23,6 +23,12 @@ function publicUser(u: {
   return { id: u.id, username: u.username, role: u.role, fullName: u.fullName, unit: u.unit ?? null };
 }
 
+function signToken(user: { id: number; username: string; role: string }) {
+  return jwt.sign({ sub: user.id, username: user.username, role: user.role }, process.env.JWT_SECRET!, {
+    expiresIn: (process.env.JWT_EXPIRES_IN ?? "8h") as jwt.SignOptions["expiresIn"],
+  });
+}
+
 export async function login(req: Request, res: Response) {
   const parsed = loginSchema.safeParse(req.body);
   if (!parsed.success) {
@@ -58,11 +64,7 @@ export async function login(req: Request, res: Response) {
     return res.status(403).json({ message: "Tài khoản đã bị tạm khóa" });
   }
 
-  const token = jwt.sign(
-    { sub: user.id, username: user.username, role: user.role },
-    process.env.JWT_SECRET!,
-    { expiresIn: (process.env.JWT_EXPIRES_IN ?? "8h") as jwt.SignOptions["expiresIn"] },
-  );
+  const token = signToken(user);
   await prisma.user.update({
     where: { id: user.id },
     data: { lastLoginAt: new Date(), failedLoginCount: 0, lockedUntil: null },
@@ -130,7 +132,8 @@ export async function changePassword(req: Request, res: Response) {
   await prisma.auditLog.create({
     data: { userId: user.id, action: "CHANGE_PASSWORD", target: user.username, ip: req.ip },
   });
-  res.json({ message: "Đổi mật khẩu thành công" });
+  // các phiên cũ (kể cả trên thiết bị khác) bị thu hồi; trả token mới để phiên hiện tại tiếp tục dùng
+  res.json({ message: "Đổi mật khẩu thành công", token: signToken(user) });
 }
 
 export async function logout(req: Request, res: Response) {

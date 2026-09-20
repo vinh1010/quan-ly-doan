@@ -144,11 +144,11 @@ export default function SecretaryModal({ mode, secretaryId, cccd, unitId, onClos
   const loading = mode !== "create" && existing.isLoading;
 
   return (
-    <div className="fixed inset-0 z-30 overflow-y-auto bg-black/40" role="dialog" aria-modal="true">
-      <div className="mx-auto my-6 w-full max-w-6xl bg-white shadow-xl">
+    <div className="print-root fixed inset-0 z-30 overflow-y-auto bg-black/40" role="dialog" aria-modal="true">
+      <div className="print-area mx-auto my-6 w-full max-w-6xl bg-white shadow-xl">
         <div className="flex items-center justify-between bg-[#eeeeee] px-4 py-5">
           <h2 className="text-lg text-slate-800">{title}</h2>
-          <button onClick={onClose} className="text-xl leading-none text-slate-500 hover:text-slate-800" aria-label="Đóng">
+          <button onClick={onClose} className="no-print text-xl leading-none text-slate-500 hover:text-slate-800" aria-label="Đóng">
             ×
           </button>
         </div>
@@ -275,7 +275,16 @@ export default function SecretaryModal({ mode, secretaryId, cccd, unitId, onClos
               <div className="mt-4 rounded bg-red-50 px-3 py-2 text-sm text-red-600">Vui lòng kiểm tra lại các trường được đánh dấu</div>
             )}
 
-            <div className="mt-6 flex justify-end gap-2">
+            <div className="no-print mt-6 flex justify-end gap-2">
+              {readOnly && (
+                <button
+                  type="button"
+                  onClick={() => window.print()}
+                  className="rounded-sm bg-[#3d7ebf] px-6 py-2 text-xs font-bold uppercase text-white hover:opacity-90"
+                >
+                  In hồ sơ
+                </button>
+              )}
               {!readOnly && (
                 <button
                   type="submit"

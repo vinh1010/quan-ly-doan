@@ -26,6 +26,6 @@ export interface ChangePasswordPayload {
 }
 
 export const changePasswordApi = (payload: ChangePasswordPayload) =>
-  api.post<{ message: string }>("/auth/change-password", payload).then((r) => r.data);
+  api.post<{ message: string; token: string }>("/auth/change-password", payload).then((r) => r.data);
 
 export const logoutApi = () => api.post("/auth/logout");

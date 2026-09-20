@@ -6,3 +6,37 @@ body {
   @apply bg-slate-50 text-slate-800 antialiased;
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 }
+
+/* In ấn: chỉ in vùng nội dung có class print-area (hồ sơ cán bộ, báo cáo), bỏ menu và nút bấm */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .print-area,
+  .print-area * {
+    visibility: visible;
+  }
+  .print-area {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    box-shadow: none;
+  }
+  .print-root {
+    position: static !important;
+    overflow: visible !important;
+    background: none !important;
+  }
+  .no-print {
+    display: none !important;
+  }
+  .print-area input,
+  .print-area select {
+    border-bottom: 1px solid #ccc;
+    background: none;
+    color: #000;
+  }
+}
