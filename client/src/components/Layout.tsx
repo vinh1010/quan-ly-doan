@@ -31,11 +31,11 @@ export default function Layout() {
     <div className="min-h-screen bg-[#f0f0f5]">
       <header className="flex min-h-16 items-center justify-between gap-2 bg-[#08326b] px-3 py-2 text-white sm:px-4">
         <Link to="/" className="flex min-w-0 items-center gap-2 sm:gap-3">
-          <svg width="36" height="38" viewBox="0 0 90 96" aria-hidden className="shrink-0 sm:h-[46px] sm:w-[44px]">
-            <circle cx="45" cy="60" r="30" fill="#fff" stroke="#1b7a3a" strokeWidth="6" />
-            <path d="M12 8c14-6 24 6 38 0s22 0 28-2v40c-6 2-14 2-28 2s-24-12-38-6z" fill="#d6141e" />
-            <polygon points="45,14 49,26 62,26 52,33 56,45 45,38 34,45 38,33 28,26 41,26" fill="#ffd400" />
-          </svg>
+          <img
+            src="/logo.png"
+            alt="Logo"
+            className="h-[36px] w-[34px] shrink-0 object-contain sm:h-[46px] sm:w-[44px]"
+          />
           <div className="hidden text-[13px] font-bold uppercase leading-tight tracking-[0.12em] sm:block">
             Hệ thống nghiệp vụ công tác
             <br />

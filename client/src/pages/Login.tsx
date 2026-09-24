@@ -33,18 +33,8 @@ function EyeIcon({ off }: { off: boolean }) {
   );
 }
 
-// Huy hiệu tượng trưng (cờ đỏ sao vàng trong vòng tròn xanh). Thay bằng logo chính thức bằng cách đặt file vào client/public.
 function Emblem() {
-  return (
-    <svg width="90" height="96" viewBox="0 0 90 96" aria-hidden>
-      <circle cx="45" cy="60" r="30" fill="#fff" stroke="#1b7a3a" strokeWidth="6" />
-      <path d="M12 8c14-6 24 6 38 0s22 0 28-2v40c-6 2-14 2-28 2s-24-12-38-6z" fill="#d6141e" />
-      <polygon
-        points="45,14 49,26 62,26 52,33 56,45 45,38 34,45 38,33 28,26 41,26"
-        fill="#ffd400"
-      />
-    </svg>
-  );
+  return <img src="/logo.png" alt="Logo" width={90} height={96} className="object-contain" />;
 }
 
 export default function Login() {
