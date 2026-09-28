@@ -1,12 +1,18 @@
 import type { Request, Response } from "express";
 import bcrypt from "bcryptjs";
+import ExcelJS from "exceljs";
 import { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { prisma } from "../prisma";
 import { audit } from "../lib/http";
+import { createPdfBuffer } from "../lib/pdf";
 import { inScope, narrowUnits, scopeOf, unitWithDescendants } from "./units.controller";
 
 const OUT_OF_SCOPE = "Bạn không có quyền thao tác trên đơn vị này";
+
+const POSITION_LABEL = { BI_THU: "Bí thư Đoàn cơ sở", PHO_BI_THU: "Phó Bí thư" } as const;
+const STATUS_LABEL = { ACTIVE: "Đang hoạt động", ENDED: "Đã kết thúc" } as const;
+const GENDER_LABEL = { MALE: "Nam", FEMALE: "Nữ", OTHER: "Khác" } as const;
 
 // ---------- Validation ----------
 
@@ -232,11 +238,8 @@ const listQuery = z.object({
   pageSize: z.coerce.number().int().min(1).max(100).default(10),
 });
 
-export async function listSecretaries(req: Request, res: Response) {
-  const parsed = listQuery.safeParse(req.query);
-  if (!parsed.success) return sendValidationError(res, parsed.error);
-  const q = parsed.data;
-
+/** Dùng chung cho danh sách + xuất Excel, để hai nơi luôn lọc giống hệt nhau. */
+async function buildSecretaryWhere(req: Request, q: z.infer<typeof listQuery>): Promise<Prisma.SecretaryWhereInput> {
   const where: Prisma.SecretaryWhereInput = { deletedAt: null };
   if (q.name) where.fullName = { contains: q.name, mode: "insensitive" };
   if (q.phone) where.phone = { contains: q.phone };
@@ -253,6 +256,14 @@ export async function listSecretaries(req: Request, res: Response) {
       ...(q.termTo ? { lte: new Date(q.termTo) } : {}),
     };
   }
+  return where;
+}
+
+export async function listSecretaries(req: Request, res: Response) {
+  const parsed = listQuery.safeParse(req.query);
+  if (!parsed.success) return sendValidationError(res, parsed.error);
+  const q = parsed.data;
+  const where = await buildSecretaryWhere(req, q);
 
   const [total, items] = await Promise.all([
     prisma.secretary.count({ where }),
@@ -267,6 +278,74 @@ export async function listSecretaries(req: Request, res: Response) {
 
   await audit(req, "SEARCH", "Secretary", undefined, { filters: req.query, total });
   res.json({ items, total, page: q.page, pageSize: q.pageSize });
+}
+
+const HEADER_FILL: ExcelJS.Fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF2260CF" } };
+
+/** Xuất Excel đúng kết quả đang lọc trên trang danh sách (mục 4.6) — không giới hạn theo trang. */
+export async function exportSecretariesXlsx(req: Request, res: Response) {
+  const parsed = listQuery.safeParse(req.query);
+  if (!parsed.success) return sendValidationError(res, parsed.error);
+  const where = await buildSecretaryWhere(req, parsed.data);
+
+  const list = await prisma.secretary.findMany({
+    where,
+    include: { unit: { select: { name: true } } },
+    orderBy: [{ unit: { name: "asc" } }, { position: "asc" }, { fullName: "asc" }],
+  });
+
+  const wb = new ExcelJS.Workbook();
+  wb.creator = "Hệ thống Quản lý Công tác Đoàn";
+  wb.created = new Date();
+
+  const ws = wb.addWorksheet("Danh sách cán bộ");
+  ws.columns = [
+    { header: "STT", key: "stt", width: 6 },
+    { header: "Họ và tên", key: "fullName", width: 26 },
+    { header: "Chức vụ", key: "position", width: 20 },
+    { header: "Đơn vị", key: "unit", width: 32 },
+    { header: "Giới tính", key: "gender", width: 10 },
+    { header: "Ngày sinh", key: "dob", width: 13 },
+    { header: "Số điện thoại", key: "phone", width: 15 },
+    { header: "Email", key: "email", width: 28 },
+    { header: "CCCD/CMND", key: "cccd", width: 16 },
+    { header: "Bắt đầu nhiệm kỳ", key: "termStart", width: 17 },
+    { header: "Kết thúc nhiệm kỳ", key: "termEnd", width: 17 },
+    { header: "Trạng thái", key: "status", width: 16 },
+  ];
+  const headerRow = ws.getRow(1);
+  headerRow.font = { bold: true, color: { argb: "FFFFFFFF" } };
+  headerRow.alignment = { vertical: "middle", horizontal: "center", wrapText: true };
+  headerRow.eachCell((c) => (c.fill = HEADER_FILL));
+
+  list.forEach((s, i) =>
+    ws.addRow({
+      stt: i + 1,
+      fullName: s.fullName,
+      position: POSITION_LABEL[s.position],
+      unit: s.unit.name,
+      gender: GENDER_LABEL[s.gender],
+      dob: s.dob,
+      phone: s.phone,
+      email: s.email ?? "",
+      cccd: s.cccd,
+      termStart: s.termStart,
+      termEnd: s.termEnd ?? "",
+      status: STATUS_LABEL[s.status],
+    }),
+  );
+  for (const key of ["dob", "termStart", "termEnd"]) ws.getColumn(key).numFmt = "dd/mm/yyyy";
+  // định dạng văn bản để Excel không cắt số 0 đầu của CCCD và SĐT
+  for (const key of ["cccd", "phone"]) ws.getColumn(key).numFmt = "@";
+  ws.views = [{ state: "frozen", ySplit: 1 }];
+
+  await audit(req, "EXPORT", "Secretary", undefined, { filters: req.query, total: list.length });
+
+  const stamp = new Date().toISOString().slice(0, 10);
+  res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+  res.setHeader("Content-Disposition", `attachment; filename="danh-sach-bi-thu-${stamp}.xlsx"`);
+  await wb.xlsx.write(res);
+  res.end();
 }
 
 export async function getSecretary(req: Request, res: Response) {
@@ -437,4 +516,115 @@ export async function deleteSecretariesBulk(req: Request, res: Response) {
     skippedInTerm: inTerm.map((s) => ({ id: s.id, fullName: s.fullName })),
     notFoundCount,
   });
+}
+
+const fmtDate = (d: Date | null) => (d ? d.toLocaleDateString("vi-VN") : "");
+const kv = (label: string, value: string | null | undefined) => [
+  { text: label, style: "label" },
+  { text: value || "—", style: "value" },
+];
+
+/** Xuất PDF hồ sơ một Bí thư (mục 5.3 — export từ trang xem chi tiết). */
+export async function exportSecretaryPdf(req: Request, res: Response) {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id)) return res.status(400).json({ message: "Mã không hợp lệ" });
+
+  const scope = await scopeOf(req);
+  const item = await prisma.secretary.findFirst({
+    where: { id, deletedAt: null, ...(scope ? { unitId: { in: scope } } : {}) },
+    include: listInclude,
+  });
+  if (!item) return res.status(404).json({ message: "Không tìm thấy Bí thư" });
+
+  const twoCol = (rows: [string, string | null | undefined][]) => ({
+    columns: [0, 1].map((c) => ({
+      width: "*",
+      table: {
+        widths: ["auto", "*"],
+        body: rows.filter((_, i) => i % 2 === c).map(([label, value]) => kv(label, value)),
+      },
+      layout: "noBorders",
+    })),
+    columnGap: 16,
+  });
+
+  const buffer = await createPdfBuffer({
+    content: [
+      {
+        columns: [
+          item.avatarUrl
+            ? { image: item.avatarUrl, width: 70, height: 70, fit: [70, 70] }
+            : { text: "", width: 70 },
+          {
+            width: "*",
+            stack: [
+              { text: item.fullName.toUpperCase(), style: "h1" },
+              { text: `${POSITION_LABEL[item.position]} — ${item.unit.name}`, style: "muted" },
+              { text: `Trạng thái: ${STATUS_LABEL[item.status]}`, style: "muted" },
+            ],
+            margin: [12, 4, 0, 0],
+          },
+        ],
+        margin: [0, 0, 0, 14],
+      },
+      { text: "Thông tin cá nhân", style: "h2" },
+      twoCol([
+        ["Ngày sinh", fmtDate(item.dob)],
+        ["Giới tính", GENDER_LABEL[item.gender]],
+        ["Dân tộc", item.ethnicity],
+        ["Tôn giáo", item.religion],
+        ["CCCD/CMND", item.cccd],
+        ["Ngày cấp", fmtDate(item.cccdIssuedDate)],
+        ["Nơi cấp", item.cccdIssuedPlace],
+        ["Số điện thoại", item.phone],
+        ["Email", item.email],
+        ["Địa chỉ", item.address],
+        ["Trình độ văn hóa", item.education],
+        ["Trình độ chuyên môn", item.training],
+        ["Lý luận chính trị", item.politicalTheory],
+        ["Trình độ tin học", item.itLevel],
+        ["Ngoại ngữ", item.language],
+        ["Tình trạng hôn nhân", item.maritalStatus],
+        ["Nghề nghiệp hiện nay", item.occupation],
+      ]),
+      { text: "Quê quán & thường trú", style: "h2" },
+      twoCol([
+        ["Quê quán (Tỉnh/thành)", item.hometownProvince],
+        ["Quê quán (Xã/phường)", item.hometownWard],
+        ["Thường trú (Tỉnh/thành)", item.residenceProvince],
+        ["Thường trú (Xã/phường)", item.residenceWard],
+      ]),
+      { text: "Đoàn — Đảng", style: "h2" },
+      twoCol([
+        ["Mã định danh đoàn viên", item.memberCode],
+        ["Thời gian vào Đoàn", fmtDate(item.unionJoinDate)],
+        ["Nơi vào Đoàn", item.unionJoinPlace],
+        ["Nơi cấp thẻ", item.cardIssuePlace],
+        ["Thời gian vào Đảng", fmtDate(item.partyJoinDate)],
+        ["Chức vụ Đảng", item.partyPosition],
+        ["Hiệp hội", item.association],
+      ]),
+      { text: "Nhiệm kỳ", style: "h2" },
+      twoCol([
+        ["Bắt đầu nhiệm kỳ", fmtDate(item.termStart)],
+        ["Kết thúc nhiệm kỳ", fmtDate(item.termEnd)],
+        ["Nhiệm kỳ", item.termLabel],
+      ]),
+      { text: `Xuất lúc: ${new Date().toLocaleString("vi-VN")}`, style: "muted", margin: [0, 16, 0, 0] },
+    ],
+    styles: {
+      h1: { fontSize: 15, bold: true },
+      h2: { fontSize: 11, bold: true, color: "#2260CF", margin: [0, 10, 0, 4] },
+      muted: { fontSize: 9, color: "#666666" },
+      label: { fontSize: 9, color: "#666666", margin: [0, 2, 8, 2] },
+      value: { fontSize: 10, margin: [0, 2, 0, 2] },
+    },
+  });
+
+  await audit(req, "EXPORT", "Secretary", id, { fullName: item.fullName, format: "pdf" });
+
+  const stamp = new Date().toISOString().slice(0, 10);
+  res.setHeader("Content-Type", "application/pdf");
+  res.setHeader("Content-Disposition", `attachment; filename="ho-so-${id}-${stamp}.pdf"`);
+  res.send(buffer);
 }

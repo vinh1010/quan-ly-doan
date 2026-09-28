@@ -130,6 +130,33 @@ export const updateSecretary = (id: number, v: SecretaryInput) => api.put(`/secr
 
 export const deleteSecretary = (id: number) => api.delete(`/secretaries/${id}`).then((r) => r.data);
 
+/** Tải file Excel đúng kết quả đang lọc trên trang danh sách (không giới hạn theo trang). */
+export async function downloadSecretariesXlsx(f: SecretaryFilters) {
+  const { page: _page, pageSize: _pageSize, ...filters } = f;
+  const res = await api.get<Blob>("/secretaries/export", { params: clean(filters), responseType: "blob" });
+  const url = URL.createObjectURL(res.data);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `danh-sach-bi-thu-${new Date().toISOString().slice(0, 10)}.xlsx`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+/** Tải file PDF hồ sơ một Bí thư (từ trang xem chi tiết). */
+export async function downloadSecretaryPdf(id: number) {
+  const res = await api.get<Blob>(`/secretaries/${id}/export-pdf`, { responseType: "blob" });
+  const url = URL.createObjectURL(res.data);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `ho-so-${id}-${new Date().toISOString().slice(0, 10)}.pdf`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
 export interface BulkDeleteResult {
   message: string;
   deletedCount: number;

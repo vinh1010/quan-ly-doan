@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   deleteSecretariesBulk,
   deleteSecretary,
+  downloadSecretariesXlsx,
   fetchSecretaries,
   fetchUnits,
   parseApiError,
@@ -125,6 +126,12 @@ export default function SecretaryList() {
     },
   });
 
+  const exportXlsx = useMutation({
+    mutationFn: () => downloadSecretariesXlsx(applied),
+    onSuccess: () => toast("success", "Đã xuất file Excel"),
+    onError: (err) => toast("error", parseApiError(err).message),
+  });
+
   const bulkRemove = useMutation({
     mutationFn: () => deleteSecretariesBulk([...selected]),
     onSuccess: (r) => {
@@ -191,6 +198,14 @@ export default function SecretaryList() {
           </button>
           <button type="button" onClick={reset} className="w-28 rounded-sm bg-[#a5a5a5] py-2 text-xs font-bold uppercase text-white hover:opacity-90">
             Làm mới
+          </button>
+          <button
+            type="button"
+            onClick={() => exportXlsx.mutate()}
+            disabled={exportXlsx.isPending || total === 0}
+            className="w-32 rounded-sm bg-[#1b7a3a] py-2 text-xs font-bold uppercase text-white hover:opacity-90 disabled:opacity-50"
+          >
+            {exportXlsx.isPending ? "Đang xuất..." : "Xuất Excel"}
           </button>
         </div>
 

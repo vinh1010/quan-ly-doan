@@ -2,6 +2,7 @@ import { useEffect, useState, type ChangeEvent, type FormEvent, type ReactNode }
 import { useMutation, useQuery } from "@tanstack/react-query";
 import {
   createSecretary,
+  downloadSecretaryPdf,
   fetchSecretary,
   fetchUnits,
   parseApiError,
@@ -105,6 +106,11 @@ export default function SecretaryModal({ mode, secretaryId, cccd, unitId, onClos
       setErrors(fields);
       setFormError(message);
     },
+  });
+
+  const exportPdf = useMutation({
+    mutationFn: () => downloadSecretaryPdf(secretaryId!),
+    onError: (err) => toast("error", parseApiError(err).message),
   });
 
   const set = <K extends keyof SecretaryInput>(k: K) => (e: { target: { value: string } }) => {
@@ -325,13 +331,23 @@ export default function SecretaryModal({ mode, secretaryId, cccd, unitId, onClos
 
             <div className="no-print mt-6 flex justify-end gap-2">
               {readOnly && (
-                <button
-                  type="button"
-                  onClick={() => window.print()}
-                  className="rounded-sm bg-[#3d7ebf] px-6 py-2 text-xs font-bold uppercase text-white hover:opacity-90"
-                >
-                  In hồ sơ
-                </button>
+                <>
+                  <button
+                    type="button"
+                    onClick={() => exportPdf.mutate()}
+                    disabled={exportPdf.isPending}
+                    className="rounded-sm bg-[#c0392b] px-6 py-2 text-xs font-bold uppercase text-white hover:opacity-90 disabled:opacity-50"
+                  >
+                    {exportPdf.isPending ? "Đang tải..." : "Tải PDF"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => window.print()}
+                    className="rounded-sm bg-[#3d7ebf] px-6 py-2 text-xs font-bold uppercase text-white hover:opacity-90"
+                  >
+                    In hồ sơ
+                  </button>
+                </>
               )}
               {!readOnly && (
                 <button
