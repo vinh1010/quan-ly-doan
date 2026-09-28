@@ -12,6 +12,7 @@ import Officers from "./pages/Officers";
 import MyProfile from "./pages/MyProfile";
 import Documents from "./pages/Documents";
 import Evaluations from "./pages/Evaluations";
+import Members from "./pages/Members";
 
 export default function App() {
   return (
@@ -21,7 +22,8 @@ export default function App() {
         <Route element={<Layout />}>
           <Route path="/" element={<Dashboard />} />
           <Route path="/me" element={<MyProfile />} />
-          {/* Mở cho mọi vai trò kể cả SECRETARY (Bí thư cấp thôn tự nhập đánh giá) */}
+          {/* Mở cho mọi vai trò kể cả SECRETARY (Bí thư cấp thôn tự nhập Đoàn viên + đánh giá) */}
+          <Route path="/members" element={<Members />} />
           <Route path="/evaluations" element={<Evaluations />} />
           <Route element={<StaffRoute />}>
             <Route path="/secretaries" element={<SecretaryList />} />

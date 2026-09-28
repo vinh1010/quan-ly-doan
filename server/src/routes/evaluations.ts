@@ -6,6 +6,7 @@ import {
   getEvaluation,
   listEvaluations,
   listMyEvaluations,
+  setGrades,
   updateEvaluation,
 } from "../controllers/evaluations.controller";
 import { requireAuth, requireRole } from "../middleware/auth";
@@ -21,3 +22,4 @@ evaluationRoutes.get("/:id", asyncHandler(getEvaluation));
 evaluationRoutes.put("/:id", asyncHandler(updateEvaluation));
 evaluationRoutes.delete("/:id", asyncHandler(deleteEvaluation));
 evaluationRoutes.post("/:id/forward", asyncHandler(forwardEvaluation));
+evaluationRoutes.put("/:id/grades", asyncHandler(setGrades));

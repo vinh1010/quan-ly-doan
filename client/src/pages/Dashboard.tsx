@@ -93,7 +93,7 @@ function SecretaryDashboard() {
         ) : latestEval.unit.id === user?.unit?.id ? (
           <div className="flex flex-wrap items-center justify-between gap-3">
             <p className="text-sm text-slate-600">
-              Đã nhập ({latestEval.excellentCount + latestEval.goodCount + latestEval.fairCount + latestEval.averageCount + latestEval.weakCount} đoàn viên) —{" "}
+              Đã chấm điểm {latestEval._count?.grades ?? 0} Đoàn viên —{" "}
               <span className="text-amber-700">chưa chuyển lên Bí thư Đoàn xã.</span>
             </p>
             <Link to="/evaluations" className="shrink-0 rounded-sm bg-[#8e44ad] px-4 py-2 text-xs font-bold uppercase text-white hover:opacity-90">

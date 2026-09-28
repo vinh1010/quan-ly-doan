@@ -6,6 +6,8 @@ interface Person {
   fullName: string | null;
 }
 
+export type GradeValue = "XUAT_SAC" | "TOT" | "KHA" | "TRUNG_BINH" | "YEU";
+
 export interface EvalForward {
   id: number;
   fromUnit: { id: number; name: string };
@@ -15,20 +17,23 @@ export interface EvalForward {
   createdAt: string;
 }
 
+export interface MemberGradeEntry {
+  id: number;
+  grade: GradeValue;
+  note: string | null;
+  member: { id: number; fullName: string; unitId: number };
+}
+
 export interface MemberEvaluation {
   id: number;
   year: number;
-  excellentCount: number;
-  goodCount: number;
-  fairCount: number;
-  averageCount: number;
-  weakCount: number;
   note: string | null;
   unitId: number;
   unit: { id: number; name: string; level: string; parentId: number | null };
   createdBy: Person;
+  grades?: MemberGradeEntry[];
   forwards?: EvalForward[];
-  _count?: { forwards: number };
+  _count?: { forwards: number; grades: number };
   createdAt: string;
   updatedAt: string;
 }
@@ -42,13 +47,14 @@ export interface EvalFilters {
 
 export interface EvalInput {
   year: string;
-  excellentCount: string;
-  goodCount: string;
-  fairCount: string;
-  averageCount: string;
-  weakCount: string;
   note: string;
   unitId: string;
+}
+
+export interface GradeInput {
+  memberId: number;
+  grade: GradeValue;
+  note?: string;
 }
 
 const clean = <T extends object>(o: T) =>
@@ -59,16 +65,21 @@ export const fetchEvaluations = (f: EvalFilters) =>
     .get<{ items: MemberEvaluation[]; total: number; page: number; pageSize: number }>("/evaluations", { params: clean(f) })
     .then((r) => r.data);
 
-/** Đánh giá do chính mình tạo, không giới hạn theo phạm vi hiện tại — thấy cả bản đã chuyển đi. Dùng cho Trang chủ. */
+export const fetchEvaluation = (id: number) => api.get<{ item: MemberEvaluation }>(`/evaluations/${id}`).then((r) => r.data.item);
+
+/** Đợt đánh giá do chính mình tạo, không giới hạn theo phạm vi hiện tại — thấy cả đợt đã chuyển đi. Dùng cho Trang chủ. */
 export const fetchMyEvaluations = (year?: number) =>
   api.get<{ items: MemberEvaluation[] }>("/evaluations/mine", { params: clean({ year }) }).then((r) => r.data.items);
 
-export const createEvaluation = (v: EvalInput) => api.post<{ message: string }>("/evaluations", v).then((r) => r.data);
+export const createEvaluation = (v: EvalInput) => api.post<{ item: MemberEvaluation; message: string }>("/evaluations", v).then((r) => r.data);
 
-export const updateEvaluation = (id: number, v: EvalInput) =>
+export const updateEvaluation = (id: number, v: { year: string; note: string }) =>
   api.put<{ message: string }>(`/evaluations/${id}`, v).then((r) => r.data);
 
 export const deleteEvaluation = (id: number) => api.delete<{ message: string }>(`/evaluations/${id}`).then((r) => r.data);
 
 export const forwardEvaluation = (id: number, note: string) =>
   api.post<{ item: MemberEvaluation; message: string }>(`/evaluations/${id}/forward`, { note }).then((r) => r.data);
+
+export const saveGrades = (id: number, grades: GradeInput[]) =>
+  api.put<{ item: MemberEvaluation; message: string }>(`/evaluations/${id}/grades`, { grades }).then((r) => r.data);

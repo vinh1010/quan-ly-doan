@@ -100,6 +100,7 @@ model User {
   forwardedDocuments   DocumentForward[]
   createdEvaluations   MemberEvaluation[]
   forwardedEvaluations EvaluationForward[]
+  createdMembers       Member[]
 
   @@index([role, status])
   @@index([unitId])
@@ -130,6 +131,7 @@ model Unit {
   evaluations      MemberEvaluation[]
   evalForwardsFrom EvaluationForward[] @relation("EvalForwardFromUnit")
   evalForwardsTo   EvaluationForward[] @relation("EvalForwardToUnit")
+  members          Member[]
 
   @@index([parentId])
   @@index([level])
@@ -259,22 +261,20 @@ model DocumentForward {
 // Đánh giá, xếp loại Đoàn viên — tổng hợp số liệu theo đơn vị và theo năm (không phải theo từng
 // đoàn viên). Bí thư cấp thôn (SECRETARY) tự nhập cho đơn vị của mình, rồi "chuyển lên" — mỗi lần
 // chuyển chỉ đổi unitId sang đúng đơn vị cha (thôn -> xã -> huyện), lưu 1 dòng lịch sử.
+// Một "đợt đánh giá": gắn với 1 đơn vị (thôn) + 1 năm, chứa xếp loại của từng Đoàn viên (MemberGrade).
+// Chuyển lên cấp trên (forward) thì cả đợt — tức toàn bộ xếp loại bên trong — đi theo, chỉ đổi unitId.
 model MemberEvaluation {
-  id             Int     @id @default(autoincrement())
-  year           Int // năm đánh giá, vd. 2026
-  excellentCount Int     @default(0) // Xuất sắc
-  goodCount      Int     @default(0) // Tốt
-  fairCount      Int     @default(0) // Khá
-  averageCount   Int     @default(0) // Trung bình
-  weakCount      Int     @default(0) // Yếu
-  note           String?
+  id   Int     @id @default(autoincrement())
+  year Int // năm đánh giá, vd. 2026
+  note String?
 
-  unitId Int // đơn vị đang giữ bản đánh giá — đổi khi chuyển lên cấp trên
+  unitId Int // đơn vị đang giữ đợt đánh giá — đổi khi chuyển lên cấp trên
   unit   Unit @relation(fields: [unitId], references: [id])
 
   createdById Int
   createdBy   User @relation(fields: [createdById], references: [id])
 
+  grades   MemberGrade[]
   forwards EvaluationForward[]
 
   deletedAt DateTime?
@@ -283,6 +283,63 @@ model MemberEvaluation {
 
   @@index([unitId, year])
   @@index([year])
+}
+
+enum MemberGradeValue {
+  XUAT_SAC
+  TOT
+  KHA
+  TRUNG_BINH
+  YEU
+}
+
+// Xếp loại của 1 Đoàn viên trong 1 đợt đánh giá
+model MemberGrade {
+  id           Int              @id @default(autoincrement())
+  evaluationId Int
+  evaluation   MemberEvaluation @relation(fields: [evaluationId], references: [id], onDelete: Cascade)
+  memberId     Int
+  member       Member           @relation(fields: [memberId], references: [id])
+  grade        MemberGradeValue
+  note         String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([evaluationId, memberId])
+  @@index([evaluationId])
+  @@index([memberId])
+}
+
+enum MemberStatus {
+  ACTIVE // đang sinh hoạt
+  INACTIVE // tạm vắng
+  MOVED // đã chuyển đi
+}
+
+// Danh sách Đoàn viên (roster) — tối giản: họ tên + đơn vị. Bí thư cấp thôn tự thêm cho đơn vị mình.
+model Member {
+  id       Int          @id @default(autoincrement())
+  fullName String
+  dob      DateTime?    @db.Date
+  gender   Gender?
+  status   MemberStatus @default(ACTIVE)
+  note     String?
+
+  unitId Int
+  unit   Unit @relation(fields: [unitId], references: [id])
+
+  createdById Int
+  createdBy   User @relation(fields: [createdById], references: [id])
+
+  grades MemberGrade[]
+
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([unitId, status])
+  @@index([fullName])
 }
 
 // Lịch sử chuyển đánh giá lên cấp trên (thôn -> xã -> huyện)

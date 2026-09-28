@@ -1,70 +1,47 @@
-import { Fragment, useState, type FormEvent } from "react";
+import { useState, type FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { fetchUnits, parseApiError } from "../api/secretaries";
+import { fetchMembers } from "../api/members";
 import {
   createEvaluation,
   deleteEvaluation,
+  fetchEvaluation,
   fetchEvaluations,
   forwardEvaluation,
+  saveGrades,
   updateEvaluation,
-  type EvalInput,
+  type GradeInput,
+  type GradeValue,
   type MemberEvaluation,
 } from "../api/evaluations";
 import ConfirmDialog from "../components/ConfirmDialog";
 import { useToast } from "../components/Toast";
 import { useAuth } from "../hooks/useAuth";
-import { formatDate } from "../lib/constants";
+import { GRADE_LABEL } from "../lib/constants";
 
 const PAGE_SIZE = 10;
 const HEAD = "border border-white/30 px-3 py-2 text-center text-[13px] font-medium";
 const CELL = "px-3 py-3 text-[13px]";
 const field =
   "mt-1 w-full border-0 border-b border-slate-300 bg-transparent py-1 text-sm outline-none focus:border-[#1890ff]";
-const numField = field + " text-right";
-
-const GRADES: { key: keyof Pick<EvalInput, "excellentCount" | "goodCount" | "fairCount" | "averageCount" | "weakCount">; label: string }[] = [
-  { key: "excellentCount", label: "Xuất sắc" },
-  { key: "goodCount", label: "Tốt" },
-  { key: "fairCount", label: "Khá" },
-  { key: "averageCount", label: "Trung bình" },
-  { key: "weakCount", label: "Yếu" },
-];
-
-const total = (d: { excellentCount: number; goodCount: number; fairCount: number; averageCount: number; weakCount: number }) =>
-  d.excellentCount + d.goodCount + d.fairCount + d.averageCount + d.weakCount;
-
-function empty(unitId?: string): EvalInput {
-  return {
-    year: String(new Date().getFullYear()),
-    excellentCount: "0", goodCount: "0", fairCount: "0", averageCount: "0", weakCount: "0",
-    note: "", unitId: unitId ?? "",
-  };
-}
-
-function fromEval(d: MemberEvaluation): EvalInput {
-  return {
-    year: String(d.year),
-    excellentCount: String(d.excellentCount), goodCount: String(d.goodCount), fairCount: String(d.fairCount),
-    averageCount: String(d.averageCount), weakCount: String(d.weakCount),
-    note: d.note ?? "", unitId: String(d.unitId),
-  };
-}
 
 function Err({ text }: { text?: string }) {
   return text ? <span className="mt-0.5 block text-xs text-red-600">{text}</span> : null;
 }
 
+/* ---------- Thêm mới / sửa thông tin đợt (năm, ghi chú) ---------- */
 function FormModal({ item, onClose, onDone }: { item?: MemberEvaluation; onClose: () => void; onDone: () => void }) {
   const toast = useToast();
   const { user } = useAuth();
-  const [form, setForm] = useState<EvalInput>(item ? fromEval(item) : empty(user?.unit ? String(user.unit.id) : undefined));
+  const [year, setYear] = useState(item ? String(item.year) : String(new Date().getFullYear()));
+  const [note, setNote] = useState(item?.note ?? "");
+  const [unitId, setUnitId] = useState(item ? String(item.unitId) : user?.unit ? String(user.unit.id) : "");
   const [errors, setErrors] = useState<Record<string, string>>({});
   const units = useQuery({ queryKey: ["units"], queryFn: () => fetchUnits() });
-  // fetchUnits() đã lọc theo đúng phạm vi của người dùng ở server — với Bí thư cấp thôn sẽ chỉ có 1 lựa chọn: đơn vị của chính họ
   const unitOptions = (units.data ?? []).filter((u) => u.level === "CO_SO" || u.level === "XA_PHUONG");
 
   const save = useMutation({
-    mutationFn: () => (item ? updateEvaluation(item.id, form) : createEvaluation(form)),
+    mutationFn: () => (item ? updateEvaluation(item.id, { year, note }) : createEvaluation({ year, note, unitId })),
     onSuccess: (r) => {
       toast("success", r.message);
       onDone();
@@ -76,21 +53,10 @@ function FormModal({ item, onClose, onDone }: { item?: MemberEvaluation; onClose
     },
   });
 
-  const set = (k: keyof EvalInput) => (e: { target: { value: string } }) => {
-    setForm((f) => ({ ...f, [k]: e.target.value }));
-    setErrors((er) => ({ ...er, [k]: "" }));
-  };
-  const totalNow = GRADES.reduce((t, g) => t + (Number(form[g.key]) || 0), 0);
-
   return (
-    <div className="fixed inset-0 z-40 flex items-start justify-center overflow-y-auto bg-black/40 p-4" role="dialog" aria-modal="true">
-      <div className="my-6 w-full max-w-xl rounded bg-white p-5 shadow-xl sm:p-6">
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg text-slate-800">{item ? "Cập nhật đánh giá, xếp loại" : "Đánh giá, xếp loại Đoàn viên"}</h2>
-          <button onClick={onClose} className="text-xl leading-none text-slate-500 hover:text-slate-800" aria-label="Đóng">
-            ×
-          </button>
-        </div>
+    <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4" role="dialog" aria-modal="true">
+      <div className="w-full max-w-sm rounded bg-white p-5 shadow-xl sm:p-6">
+        <h2 className="mb-4 text-lg text-slate-800">{item ? "Cập nhật đợt đánh giá" : "Tạo đợt đánh giá mới"}</h2>
         <form
           onSubmit={(e: FormEvent) => {
             e.preventDefault();
@@ -98,17 +64,17 @@ function FormModal({ item, onClose, onDone }: { item?: MemberEvaluation; onClose
             save.mutate();
           }}
           noValidate
-          className="space-y-4"
+          className="space-y-3"
         >
-          <div className="grid gap-3 sm:grid-cols-2">
-            <label className="text-xs text-slate-500">
-              Năm đánh giá <span className="text-red-500">*</span>
-              <input type="number" className={field} value={form.year} onChange={set("year")} />
-              <Err text={errors.year} />
-            </label>
-            <label className="text-xs text-slate-500">
+          <label className="block text-xs text-slate-500">
+            Năm đánh giá <span className="text-red-500">*</span>
+            <input type="number" className={field} value={year} onChange={(e) => setYear(e.target.value)} />
+            <Err text={errors.year} />
+          </label>
+          {!item && (
+            <label className="block text-xs text-slate-500">
               Đơn vị (cấp thôn/cơ sở) <span className="text-red-500">*</span>
-              <select className={field} value={form.unitId} onChange={set("unitId")}>
+              <select className={field} value={unitId} onChange={(e) => setUnitId(e.target.value)}>
                 <option value="">— Chọn đơn vị —</option>
                 {unitOptions.map((u) => (
                   <option key={u.id} value={u.id}>{u.name}</option>
@@ -116,29 +82,11 @@ function FormModal({ item, onClose, onDone }: { item?: MemberEvaluation; onClose
               </select>
               <Err text={errors.unitId} />
             </label>
-          </div>
-
-          <div>
-            <p className="mb-1 text-xs text-slate-500">Số lượng Đoàn viên theo từng loại</p>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
-              {GRADES.map((g) => (
-                <label key={g.key} className="text-xs text-slate-500">
-                  {g.label}
-                  <input type="number" min={0} className={numField} value={form[g.key]} onChange={set(g.key)} />
-                  <Err text={errors[g.key]} />
-                </label>
-              ))}
-            </div>
-            <p className="mt-2 text-xs text-slate-500">
-              Tổng cộng: <b>{totalNow}</b> đoàn viên
-            </p>
-          </div>
-
+          )}
           <label className="block text-xs text-slate-500">
             Ghi chú
-            <textarea className={field + " min-h-[50px]"} value={form.note} onChange={set("note")} />
+            <textarea className={field + " min-h-[50px]"} value={note} onChange={(e) => setNote(e.target.value)} />
           </label>
-
           <div className="flex justify-end gap-3 pt-2">
             <button type="button" onClick={onClose} disabled={save.isPending} className="w-28 rounded-sm bg-[#a5a5a5] py-2 text-xs font-bold uppercase text-white hover:opacity-90">
               Hủy
@@ -148,6 +96,122 @@ function FormModal({ item, onClose, onDone }: { item?: MemberEvaluation; onClose
             </button>
           </div>
         </form>
+      </div>
+    </div>
+  );
+}
+
+/* ---------- Chấm điểm từng Đoàn viên trong 1 đợt ---------- */
+function GradingModal({ evalItem, onClose, onDone }: { evalItem: MemberEvaluation; onClose: () => void; onDone: () => void }) {
+  const toast = useToast();
+  const detail = useQuery({ queryKey: ["evaluation", evalItem.id], queryFn: () => fetchEvaluation(evalItem.id) });
+  const members = useQuery({
+    queryKey: ["members-of-unit", evalItem.unitId],
+    queryFn: () => fetchMembers({ unitId: String(evalItem.unitId), page: 1, pageSize: 200 }),
+  });
+  const [rows, setRows] = useState<Record<number, { grade: GradeValue | ""; note: string }> | null>(null);
+
+  // khởi tạo bảng chấm điểm từ xếp loại đã có (chỉ 1 lần khi tải xong)
+  if (rows === null && detail.data) {
+    const init: Record<number, { grade: GradeValue | ""; note: string }> = {};
+    for (const g of detail.data.grades ?? []) init[g.member.id] = { grade: g.grade, note: g.note ?? "" };
+    setRows(init);
+  }
+
+  const save = useMutation({
+    mutationFn: (grades: GradeInput[]) => saveGrades(evalItem.id, grades),
+    onSuccess: (r) => {
+      toast("success", r.message);
+      onDone();
+    },
+    onError: (err) => toast("error", parseApiError(err).message),
+  });
+
+  const setRow = (memberId: number, patch: Partial<{ grade: GradeValue | ""; note: string }>) =>
+    setRows((r) => ({ ...r, [memberId]: { grade: "", note: "", ...r?.[memberId], ...patch } }));
+
+  const submit = (e: FormEvent) => {
+    e.preventDefault();
+    const grades: GradeInput[] = Object.entries(rows ?? {})
+      .filter(([, v]) => v.grade)
+      .map(([memberId, v]) => ({ memberId: Number(memberId), grade: v.grade as GradeValue, note: v.note || undefined }));
+    if (grades.length === 0) {
+      toast("error", "Chưa chọn xếp loại cho ai");
+      return;
+    }
+    save.mutate(grades);
+  };
+
+  const memberList = members.data?.items ?? [];
+  const loading = detail.isLoading || members.isLoading;
+
+  return (
+    <div className="fixed inset-0 z-40 flex items-start justify-center overflow-y-auto bg-black/40 p-4" role="dialog" aria-modal="true">
+      <div className="my-6 w-full max-w-3xl rounded bg-white p-5 shadow-xl sm:p-6">
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-lg text-slate-800">
+            Chấm điểm — Năm {evalItem.year} — {evalItem.unit.name}
+          </h2>
+          <button onClick={onClose} className="text-xl leading-none text-slate-500 hover:text-slate-800" aria-label="Đóng">
+            ×
+          </button>
+        </div>
+
+        {loading ? (
+          <p className="py-8 text-center text-slate-500">Đang tải...</p>
+        ) : memberList.length === 0 ? (
+          <p className="py-8 text-center text-slate-500">
+            Đơn vị này chưa có Đoàn viên nào trong danh sách. Vào mục "Đoàn viên" để thêm trước.
+          </p>
+        ) : (
+          <form onSubmit={submit}>
+            <div className="max-h-[55vh] overflow-y-auto">
+              <table className="w-full border-collapse text-left">
+                <thead className="sticky top-0 bg-[#2260cf] text-white">
+                  <tr>
+                    <th className={HEAD + " text-left"}>Họ và tên</th>
+                    <th className={HEAD + " w-44"}>Xếp loại</th>
+                    <th className={HEAD + " text-left"}>Ghi chú</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {memberList.map((m) => (
+                    <tr key={m.id} className="border-b hover:bg-slate-50">
+                      <td className={CELL}>{m.fullName}</td>
+                      <td className={CELL}>
+                        <select
+                          className={field + " mt-0"}
+                          value={rows?.[m.id]?.grade ?? ""}
+                          onChange={(e) => setRow(m.id, { grade: e.target.value as GradeValue | "" })}
+                        >
+                          <option value="">— Chưa chấm —</option>
+                          {Object.entries(GRADE_LABEL).map(([v, l]) => (
+                            <option key={v} value={v}>{l}</option>
+                          ))}
+                        </select>
+                      </td>
+                      <td className={CELL}>
+                        <input
+                          className={field + " mt-0"}
+                          value={rows?.[m.id]?.note ?? ""}
+                          onChange={(e) => setRow(m.id, { note: e.target.value })}
+                        />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="mt-4 flex justify-end gap-3">
+              <button type="button" onClick={onClose} disabled={save.isPending} className="w-28 rounded-sm bg-[#a5a5a5] py-2 text-xs font-bold uppercase text-white hover:opacity-90">
+                Hủy
+              </button>
+              <button type="submit" disabled={save.isPending} className="w-32 rounded-sm bg-[#3d7ebf] py-2 text-xs font-bold uppercase text-white hover:opacity-90 disabled:opacity-60">
+                {save.isPending ? "Đang lưu..." : "Lưu xếp loại"}
+              </button>
+            </div>
+          </form>
+        )}
       </div>
     </div>
   );
@@ -172,7 +236,7 @@ function ForwardModal({ item, onClose, onDone }: { item: MemberEvaluation; onClo
       <div className="w-full max-w-sm rounded bg-white p-5 shadow-xl sm:p-6">
         <h2 className="mb-1 text-lg text-slate-800">Chuyển lên cấp trên</h2>
         <p className="mb-4 text-sm text-slate-500">
-          Đánh giá năm {item.year} — đang ở <b>{item.unit.name}</b>. Sẽ chuyển lên đơn vị cấp trên trực tiếp.
+          Đợt đánh giá năm {item.year} — đang ở <b>{item.unit.name}</b>. Toàn bộ xếp loại bên trong sẽ chuyển theo.
         </p>
         <form
           onSubmit={(e: FormEvent) => {
@@ -208,6 +272,7 @@ export default function Evaluations() {
   const [draft, setDraft] = useState({ year: "" });
   const [applied, setApplied] = useState({ year: "", page: 1 });
   const [modal, setModal] = useState<{ item?: MemberEvaluation } | null>(null);
+  const [grading, setGrading] = useState<MemberEvaluation | null>(null);
   const [toDelete, setToDelete] = useState<MemberEvaluation | null>(null);
   const [toForward, setToForward] = useState<MemberEvaluation | null>(null);
 
@@ -267,7 +332,7 @@ export default function Evaluations() {
 
       <div className="px-4 py-5 sm:px-[43px]">
         <button onClick={() => setModal({})} className="mb-4 w-full rounded-sm bg-[#2196f3] py-2.5 text-xs font-bold uppercase text-white hover:opacity-90 sm:w-auto sm:px-6">
-          + Thêm đánh giá
+          + Tạo đợt đánh giá
         </button>
 
         <div className="grid gap-3 lg:hidden">
@@ -281,17 +346,12 @@ export default function Evaluations() {
                     {!!d._count?.forwards && <span className="ml-1 text-xs text-slate-400">(đã chuyển {d._count.forwards} lần)</span>}
                   </div>
                 </div>
-                <span className="shrink-0 text-xs font-medium text-slate-600">{total(d)} đoàn viên</span>
+                <span className="shrink-0 text-xs font-medium text-slate-600">{d._count?.grades ?? 0} đã chấm</span>
               </div>
-              <dl className="mt-2 grid grid-cols-[100px_1fr] gap-x-2 gap-y-1 text-[13px]">
-                {GRADES.map((g) => (
-                  <Fragment key={g.key}>
-                    <dt className="text-slate-500">{g.label}</dt>
-                    <dd>{d[g.key]}</dd>
-                  </Fragment>
-                ))}
-              </dl>
               <div className="mt-3 flex flex-wrap gap-2">
+                <button onClick={() => setGrading(d)} className="flex-1 rounded-sm bg-[#1b7a3a] py-2 text-xs font-bold uppercase text-white hover:opacity-90">
+                  Chấm điểm
+                </button>
                 <button onClick={() => setModal({ item: d })} className="flex-1 rounded-sm bg-[#1e88e5] py-2 text-xs font-bold uppercase text-white hover:opacity-90">
                   Sửa
                 </button>
@@ -315,11 +375,8 @@ export default function Evaluations() {
               <th className={HEAD + " w-10"}>#</th>
               <th className={HEAD}>Năm</th>
               <th className={HEAD + " text-left"}>Đơn vị</th>
-              {GRADES.map((g) => (
-                <th key={g.key} className={HEAD}>{g.label}</th>
-              ))}
-              <th className={HEAD}>Tổng</th>
-              <th className={HEAD + " w-48"}>Thao tác</th>
+              <th className={HEAD}>Số Đoàn viên đã chấm</th>
+              <th className={HEAD + " w-64"}>Thao tác</th>
             </tr>
           </thead>
           <tbody>
@@ -331,12 +388,12 @@ export default function Evaluations() {
                   {d.unit.name}
                   {!!d._count?.forwards && <div className="text-xs text-slate-400">(đã chuyển {d._count.forwards} lần)</div>}
                 </td>
-                {GRADES.map((g) => (
-                  <td key={g.key} className={CELL + " text-center"}>{d[g.key]}</td>
-                ))}
-                <td className={CELL + " text-center font-medium"}>{total(d)}</td>
+                <td className={CELL + " text-center font-medium"}>{d._count?.grades ?? 0}</td>
                 <td className={CELL}>
                   <div className="flex flex-wrap justify-center gap-1.5">
+                    <button onClick={() => setGrading(d)} className="rounded-sm bg-[#1b7a3a] px-2.5 py-1.5 text-xs font-bold uppercase text-white hover:opacity-90">
+                      Chấm điểm
+                    </button>
                     <button onClick={() => setModal({ item: d })} className="rounded-sm bg-[#1e88e5] px-2.5 py-1.5 text-xs font-bold uppercase text-white hover:opacity-90">
                       Sửa
                     </button>
@@ -352,7 +409,7 @@ export default function Evaluations() {
             ))}
             {!list.isFetching && items.length === 0 && (
               <tr>
-                <td colSpan={9} className="px-4 py-10 text-center text-slate-500">
+                <td colSpan={5} className="px-4 py-10 text-center text-slate-500">
                   {list.isError ? "Không thể tải dữ liệu" : "Không tìm thấy kết quả"}
                 </td>
               </tr>
@@ -361,7 +418,7 @@ export default function Evaluations() {
         </table>
 
         <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-sm text-slate-600">
-          <span>{list.isFetching ? "Đang tải..." : `Tổng ${totalCount} bản đánh giá · Trang ${applied.page}/${pages}`}</span>
+          <span>{list.isFetching ? "Đang tải..." : `Tổng ${totalCount} đợt đánh giá · Trang ${applied.page}/${pages}`}</span>
           <div className="flex gap-2">
             <button disabled={applied.page <= 1} onClick={() => setApplied({ ...applied, page: applied.page - 1 })} className="rounded border border-slate-300 px-3 py-1.5 hover:bg-slate-100 disabled:opacity-40">
               Trước
@@ -372,8 +429,8 @@ export default function Evaluations() {
           </div>
         </div>
         <p className="mt-3 text-xs text-slate-500">
-          Bí thư cấp thôn tự nhập cho đơn vị của mình rồi bấm "Chuyển lên" để gửi lên Bí thư Đoàn xã, sau đó xã chuyển tiếp lên cấp huyện.
-          Mỗi lần chuyển chỉ lên đúng 1 cấp liền trên, không bỏ qua cấp.
+          Bí thư cấp thôn tạo đợt cho đơn vị mình, bấm "Chấm điểm" để xếp loại từng Đoàn viên (cần có sẵn trong mục "Đoàn viên"),
+          rồi bấm "Chuyển lên" để gửi cả đợt lên Bí thư Đoàn xã, sau đó xã chuyển tiếp lên cấp huyện.
         </p>
       </div>
 
@@ -388,8 +445,19 @@ export default function Evaluations() {
         />
       )}
 
+      {grading && (
+        <GradingModal
+          evalItem={grading}
+          onClose={() => setGrading(null)}
+          onDone={() => {
+            setGrading(null);
+            refresh();
+          }}
+        />
+      )}
+
       {toDelete && (
-        <ConfirmDialog title="Bạn có chắc chắn xóa bản đánh giá này ?" busy={remove.isPending} onCancel={() => setToDelete(null)} onConfirm={() => remove.mutate(toDelete)}>
+        <ConfirmDialog title="Bạn có chắc chắn xóa đợt đánh giá này ?" busy={remove.isPending} onCancel={() => setToDelete(null)} onConfirm={() => remove.mutate(toDelete)}>
           <p className="font-medium text-slate-800">Năm {toDelete.year} — {toDelete.unit.name}</p>
         </ConfirmDialog>
       )}

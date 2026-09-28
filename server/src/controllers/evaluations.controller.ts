@@ -6,24 +6,18 @@ import { audit } from "../lib/http";
 import { inScope, narrowUnits, scopeOf, unitWithDescendants } from "./units.controller";
 
 /**
- * Đánh giá, xếp loại Đoàn viên — tổng hợp số liệu theo đơn vị và theo năm.
- * Bí thư cấp thôn (SECRETARY) tự nhập cho đơn vị của mình, rồi "chuyển lên" cấp trên
- * (thôn -> xã -> huyện): mỗi lần chuyển chỉ đổi đơn vị phụ trách sang đúng đơn vị cha,
- * không cần chọn vì luôn là 1 chặng duy nhất. Khác công văn ở chỗ không có bước "xác nhận".
+ * Đánh giá, xếp loại Đoàn viên — theo TỪNG Đoàn viên (không phải số liệu tổng hợp theo khu vực).
+ * Một "đợt đánh giá" (MemberEvaluation) gắn với 1 đơn vị (thôn) + 1 năm, bên trong chứa xếp loại
+ * của từng người (MemberGrade). Bí thư cấp thôn tự nhập rồi "chuyển lên" cấp trên (thôn -> xã ->
+ * huyện): mỗi lần chuyển chỉ đổi đơn vị đang giữ đợt, toàn bộ xếp loại bên trong đi theo — không
+ * cần chọn đơn vị vì luôn là 1 chặng duy nhất. Khác công văn ở chỗ không có bước "xác nhận".
  */
 
 const OUT_OF_SCOPE = "Bạn không có quyền thao tác trên đơn vị này";
-
-const countField = (label: string) =>
-  z.coerce.number({ invalid_type_error: `${label} phải là số` }).int(`${label} phải là số nguyên`).min(0, `${label} không được âm`).default(0);
+const GRADES = ["XUAT_SAC", "TOT", "KHA", "TRUNG_BINH", "YEU"] as const;
 
 const evalSchema = z.object({
   year: z.coerce.number({ invalid_type_error: "Vui lòng nhập năm đánh giá" }).int().min(2000, "Năm không hợp lệ").max(2100, "Năm không hợp lệ"),
-  excellentCount: countField("Số Xuất sắc"),
-  goodCount: countField("Số Tốt"),
-  fairCount: countField("Số Khá"),
-  averageCount: countField("Số Trung bình"),
-  weakCount: countField("Số Yếu"),
   note: z.string().trim().max(1000, "Tối đa 1000 ký tự").optional().nullable().transform((v) => (v ? v : null)),
   unitId: z.coerce.number({ invalid_type_error: "Vui lòng chọn đơn vị" }).int().positive("Vui lòng chọn đơn vị"),
 });
@@ -37,25 +31,18 @@ function sendValidationError(res: Response, error: z.ZodError) {
   return res.status(400).json({ message: Object.values(errors)[0] ?? "Dữ liệu không hợp lệ", errors });
 }
 
-const toData = (v: z.infer<typeof evalSchema>) => ({
-  year: v.year,
-  excellentCount: v.excellentCount,
-  goodCount: v.goodCount,
-  fairCount: v.fairCount,
-  averageCount: v.averageCount,
-  weakCount: v.weakCount,
-  note: v.note,
-  unitId: v.unitId,
-});
-
 const listInclude = {
   unit: { select: { id: true, name: true, level: true, parentId: true } },
   createdBy: { select: { id: true, username: true, fullName: true } },
-  _count: { select: { forwards: true } },
+  _count: { select: { forwards: true, grades: true } },
 } satisfies Prisma.MemberEvaluationInclude;
 
 const detailInclude = {
   ...listInclude,
+  grades: {
+    include: { member: { select: { id: true, fullName: true, unitId: true } } },
+    orderBy: { member: { fullName: "asc" } },
+  },
   forwards: {
     orderBy: { createdAt: "asc" },
     include: {
@@ -100,8 +87,8 @@ export async function listEvaluations(req: Request, res: Response) {
 }
 
 /**
- * Đánh giá do chính người đang đăng nhập tạo, không giới hạn theo phạm vi địa bàn hiện tại —
- * để Bí thư cấp thôn vẫn thấy bản mình nhập ngay cả sau khi đã chuyển lên cấp trên (lúc đó
+ * Đợt đánh giá do chính người đang đăng nhập tạo, không giới hạn theo phạm vi địa bàn hiện tại —
+ * để Bí thư cấp thôn vẫn thấy đợt mình tạo ngay cả sau khi đã chuyển lên cấp trên (lúc đó
  * unitId không còn trong phạm vi của họ nữa nên listEvaluations không trả về). Dùng cho Trang chủ.
  */
 export async function listMyEvaluations(req: Request, res: Response) {
@@ -126,7 +113,7 @@ export async function getEvaluation(req: Request, res: Response) {
     where: { id, deletedAt: null, ...(scope ? { unitId: { in: scope } } : {}) },
     include: detailInclude,
   });
-  if (!item) return res.status(404).json({ message: "Không tìm thấy đánh giá" });
+  if (!item) return res.status(404).json({ message: "Không tìm thấy đợt đánh giá" });
 
   await audit(req, "VIEW", "MemberEvaluation", id);
   res.json({ item });
@@ -144,33 +131,31 @@ export async function createEvaluation(req: Request, res: Response) {
   }
 
   const item = await prisma.memberEvaluation.create({
-    data: { ...toData(v), createdById: req.auth!.sub },
+    data: { year: v.year, note: v.note, unitId: v.unitId, createdById: req.auth!.sub },
     include: listInclude,
   });
   await audit(req, "CREATE", "MemberEvaluation", item.id, { year: item.year, unitId: item.unitId });
-  res.status(201).json({ item, message: "Thêm mới đánh giá xếp loại thành công" });
+  res.status(201).json({ item, message: "Tạo đợt đánh giá thành công" });
 }
 
 export async function updateEvaluation(req: Request, res: Response) {
   const id = Number(req.params.id);
   if (!Number.isInteger(id)) return res.status(400).json({ message: "Mã không hợp lệ" });
 
-  const parsed = evalSchema.safeParse(req.body);
+  const parsed = z
+    .object({ year: z.coerce.number().int().min(2000).max(2100), note: z.string().trim().max(1000).optional().nullable().transform((v) => (v ? v : null)) })
+    .safeParse(req.body);
   if (!parsed.success) return sendValidationError(res, parsed.error);
-  const v = parsed.data;
 
   const scope = await scopeOf(req);
   const current = await prisma.memberEvaluation.findFirst({
     where: { id, deletedAt: null, ...(scope ? { unitId: { in: scope } } : {}) },
   });
-  if (!current) return res.status(404).json({ message: "Không tìm thấy đánh giá" });
-  if (!inScope(scope, v.unitId)) {
-    return res.status(403).json({ message: OUT_OF_SCOPE, errors: { unitId: OUT_OF_SCOPE } });
-  }
+  if (!current) return res.status(404).json({ message: "Không tìm thấy đợt đánh giá" });
 
-  const item = await prisma.memberEvaluation.update({ where: { id }, data: toData(v), include: listInclude });
+  const item = await prisma.memberEvaluation.update({ where: { id }, data: parsed.data, include: listInclude });
   await audit(req, "UPDATE", "MemberEvaluation", id, { year: item.year });
-  res.json({ item, message: "Cập nhật đánh giá xếp loại thành công" });
+  res.json({ item, message: "Cập nhật đợt đánh giá thành công" });
 }
 
 export async function deleteEvaluation(req: Request, res: Response) {
@@ -181,16 +166,70 @@ export async function deleteEvaluation(req: Request, res: Response) {
   const current = await prisma.memberEvaluation.findFirst({
     where: { id, deletedAt: null, ...(scope ? { unitId: { in: scope } } : {}) },
   });
-  if (!current) return res.status(404).json({ message: "Không tìm thấy đánh giá" });
+  if (!current) return res.status(404).json({ message: "Không tìm thấy đợt đánh giá" });
 
   await prisma.memberEvaluation.update({ where: { id }, data: { deletedAt: new Date() } });
   await audit(req, "DELETE", "MemberEvaluation", id, { year: current.year });
-  res.json({ message: "Xóa đánh giá xếp loại thành công" });
+  res.json({ message: "Xóa đợt đánh giá thành công" });
+}
+
+const gradesSchema = z.object({
+  grades: z
+    .array(
+      z.object({
+        memberId: z.coerce.number().int().positive(),
+        grade: z.enum(GRADES, { errorMap: () => ({ message: "Xếp loại không hợp lệ" }) }),
+        note: z.string().trim().max(500).optional().nullable().transform((v) => (v ? v : null)),
+      }),
+    )
+    .min(1, "Chưa chọn Đoàn viên nào")
+    .max(500, "Tối đa 500 Đoàn viên một lần lưu"),
+});
+
+/** Lưu (thêm/sửa) xếp loại của từng Đoàn viên trong 1 đợt đánh giá — lưu đè theo memberId. */
+export async function setGrades(req: Request, res: Response) {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id)) return res.status(400).json({ message: "Mã không hợp lệ" });
+
+  const parsed = gradesSchema.safeParse(req.body);
+  if (!parsed.success) return sendValidationError(res, parsed.error);
+  const { grades } = parsed.data;
+
+  const scope = await scopeOf(req);
+  const evaluation = await prisma.memberEvaluation.findFirst({
+    where: { id, deletedAt: null, ...(scope ? { unitId: { in: scope } } : {}) },
+  });
+  if (!evaluation) return res.status(404).json({ message: "Không tìm thấy đợt đánh giá" });
+
+  const memberIds = [...new Set(grades.map((g) => g.memberId))];
+  const members = await prisma.member.findMany({ where: { id: { in: memberIds }, deletedAt: null } });
+  if (members.length !== memberIds.length) {
+    return res.status(400).json({ message: "Có Đoàn viên không tồn tại trong danh sách" });
+  }
+  const outOfScope = members.find((m) => !inScope(scope, m.unitId));
+  if (outOfScope) {
+    return res.status(403).json({ message: `${OUT_OF_SCOPE}: ${outOfScope.fullName}` });
+  }
+
+  await prisma.$transaction(
+    grades.map((g) =>
+      prisma.memberGrade.upsert({
+        where: { evaluationId_memberId: { evaluationId: id, memberId: g.memberId } },
+        create: { evaluationId: id, memberId: g.memberId, grade: g.grade, note: g.note },
+        update: { grade: g.grade, note: g.note },
+      }),
+    ),
+  );
+
+  const item = await prisma.memberEvaluation.findUniqueOrThrow({ where: { id }, include: detailInclude });
+  await audit(req, "UPDATE", "MemberEvaluation", id, { grades: grades.length });
+  res.json({ item, message: `Đã lưu xếp loại cho ${grades.length} Đoàn viên` });
 }
 
 /**
  * Chuyển lên cấp trên: luôn là đơn vị CHA trực tiếp của đơn vị đang giữ (thôn -> xã -> huyện),
- * không cho chọn đơn vị khác — tránh nhảy cấp hoặc chuyển sai nhánh.
+ * không cho chọn đơn vị khác — tránh nhảy cấp hoặc chuyển sai nhánh. Toàn bộ xếp loại bên trong
+ * đợt (MemberGrade) đi theo nguyên vẹn vì chúng gắn với evaluationId, không phải unitId.
  */
 export async function forwardEvaluation(req: Request, res: Response) {
   const id = Number(req.params.id);
@@ -205,7 +244,7 @@ export async function forwardEvaluation(req: Request, res: Response) {
     where: { id, deletedAt: null, ...(scope ? { unitId: { in: scope } } : {}) },
     include: { unit: { select: { id: true, name: true, parentId: true } } },
   });
-  if (!current) return res.status(404).json({ message: "Không tìm thấy đánh giá" });
+  if (!current) return res.status(404).json({ message: "Không tìm thấy đợt đánh giá" });
 
   const toUnitId = current.unit.parentId;
   if (!toUnitId) {

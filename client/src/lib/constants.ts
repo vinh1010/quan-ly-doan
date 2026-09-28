@@ -4,6 +4,7 @@ export const STATUS_LABEL = { ACTIVE: "Đang hoạt động", ENDED: "Đã kết
 export const ACCOUNT_STATUS_LABEL = { ACTIVE: "Kích hoạt", LOCKED: "Tạm khóa" } as const;
 export const DOC_TYPE_LABEL = { CHI_DAO: "Chỉ đạo", THONG_BAO: "Thông báo", MOI_HOP: "Mời họp", KHAC: "Khác" } as const;
 export const DOC_STATUS_LABEL = { CHUA_XU_LY: "Chưa xử lý", DANG_XU_LY: "Đang xử lý", DA_XU_LY: "Đã xử lý" } as const;
+export const GRADE_LABEL = { XUAT_SAC: "Xuất sắc", TOT: "Tốt", KHA: "Khá", TRUNG_BINH: "Trung bình", YEU: "Yếu" } as const;
 export const ACTION_LABEL: Record<string, string> = {
   LOGIN: "Đăng nhập",
   LOGOUT: "Đăng xuất",
