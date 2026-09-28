@@ -124,6 +124,9 @@ export const fetchSecretaries = (f: SecretaryFilters) =>
 
 export const fetchSecretary = (id: number) => api.get<{ item: Secretary }>(`/secretaries/${id}`).then((r) => r.data.item);
 
+/** Hồ sơ của chính mình — dành cho tài khoản vai trò SECRETARY. */
+export const fetchMySecretary = () => api.get<{ item: Secretary }>("/secretaries/me").then((r) => r.data.item);
+
 export const createSecretary = (v: SecretaryInput) => api.post("/secretaries", v).then((r) => r.data);
 
 export const updateSecretary = (id: number, v: SecretaryInput) => api.put(`/secretaries/${id}`, v).then((r) => r.data);
@@ -151,6 +154,18 @@ export async function downloadSecretaryPdf(id: number) {
   const a = document.createElement("a");
   a.href = url;
   a.download = `ho-so-${id}-${new Date().toISOString().slice(0, 10)}.pdf`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+export async function downloadMySecretaryPdf() {
+  const res = await api.get<Blob>("/secretaries/me/export-pdf", { responseType: "blob" });
+  const url = URL.createObjectURL(res.data);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `ho-so-cua-toi-${new Date().toISOString().slice(0, 10)}.pdf`;
   document.body.appendChild(a);
   a.click();
   a.remove();

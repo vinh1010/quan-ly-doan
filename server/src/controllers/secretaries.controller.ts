@@ -524,18 +524,10 @@ const kv = (label: string, value: string | null | undefined) => [
   { text: value || "—", style: "value" },
 ];
 
-/** Xuất PDF hồ sơ một Bí thư (mục 5.3 — export từ trang xem chi tiết). */
-export async function exportSecretaryPdf(req: Request, res: Response) {
-  const id = Number(req.params.id);
-  if (!Number.isInteger(id)) return res.status(400).json({ message: "Mã không hợp lệ" });
+type SecretaryWithRelations = Prisma.SecretaryGetPayload<{ include: typeof listInclude }>;
 
-  const scope = await scopeOf(req);
-  const item = await prisma.secretary.findFirst({
-    where: { id, deletedAt: null, ...(scope ? { unitId: { in: scope } } : {}) },
-    include: listInclude,
-  });
-  if (!item) return res.status(404).json({ message: "Không tìm thấy Bí thư" });
-
+/** Dựng buffer PDF hồ sơ — dùng chung cho cán bộ cấp trên xem người khác và Bí thư tự xem mình. */
+async function buildSecretaryPdf(item: SecretaryWithRelations): Promise<Buffer> {
   const twoCol = (rows: [string, string | null | undefined][]) => ({
     columns: [0, 1].map((c) => ({
       width: "*",
@@ -548,7 +540,7 @@ export async function exportSecretaryPdf(req: Request, res: Response) {
     columnGap: 16,
   });
 
-  const buffer = await createPdfBuffer({
+  return createPdfBuffer({
     content: [
       {
         columns: [
@@ -620,11 +612,56 @@ export async function exportSecretaryPdf(req: Request, res: Response) {
       value: { fontSize: 10, margin: [0, 2, 0, 2] },
     },
   });
+}
 
+/** Xuất PDF hồ sơ một Bí thư (mục 5.3 — export từ trang xem chi tiết, dành cho cán bộ cấp trên). */
+export async function exportSecretaryPdf(req: Request, res: Response) {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id)) return res.status(400).json({ message: "Mã không hợp lệ" });
+
+  const scope = await scopeOf(req);
+  const item = await prisma.secretary.findFirst({
+    where: { id, deletedAt: null, ...(scope ? { unitId: { in: scope } } : {}) },
+    include: listInclude,
+  });
+  if (!item) return res.status(404).json({ message: "Không tìm thấy Bí thư" });
+
+  const buffer = await buildSecretaryPdf(item);
   await audit(req, "EXPORT", "Secretary", id, { fullName: item.fullName, format: "pdf" });
 
   const stamp = new Date().toISOString().slice(0, 10);
   res.setHeader("Content-Type", "application/pdf");
   res.setHeader("Content-Disposition", `attachment; filename="ho-so-${id}-${stamp}.pdf"`);
+  res.send(buffer);
+}
+
+/** Hồ sơ của chính mình — dành cho tài khoản vai trò SECRETARY (chỉ xem, không sửa). */
+async function findMySecretary(req: Request) {
+  if (req.auth!.role !== "SECRETARY") return null;
+  return prisma.secretary.findFirst({
+    where: { userId: req.auth!.sub, deletedAt: null },
+    include: listInclude,
+  });
+}
+
+export async function getMySecretary(req: Request, res: Response) {
+  const item = await findMySecretary(req);
+  if (!item) return res.status(404).json({ message: "Không tìm thấy hồ sơ của bạn" });
+
+  const unit = await prisma.unit.findUnique({ where: { id: item.unitId }, select: { memberCount: true } });
+  await audit(req, "VIEW", "Secretary", item.id, { self: true });
+  res.json({ item: { ...item, memberCount: unit?.memberCount ?? 0 } });
+}
+
+export async function exportMySecretaryPdf(req: Request, res: Response) {
+  const item = await findMySecretary(req);
+  if (!item) return res.status(404).json({ message: "Không tìm thấy hồ sơ của bạn" });
+
+  const buffer = await buildSecretaryPdf(item);
+  await audit(req, "EXPORT", "Secretary", item.id, { fullName: item.fullName, format: "pdf", self: true });
+
+  const stamp = new Date().toISOString().slice(0, 10);
+  res.setHeader("Content-Type", "application/pdf");
+  res.setHeader("Content-Disposition", `attachment; filename="ho-so-cua-toi-${stamp}.pdf"`);
   res.send(buffer);
 }

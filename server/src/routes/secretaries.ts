@@ -3,8 +3,10 @@ import {
   createSecretary,
   deleteSecretariesBulk,
   deleteSecretary,
+  exportMySecretaryPdf,
   exportSecretariesXlsx,
   exportSecretaryPdf,
+  getMySecretary,
   getSecretary,
   listSecretaries,
   updateSecretary,
@@ -14,6 +16,11 @@ import { requireAuth, requireRole } from "../middleware/auth";
 import { asyncHandler } from "../lib/http";
 
 export const secretaryRoutes = Router();
+// Hồ sơ của chính mình (vai trò SECRETARY) — đặt trước requireRole bên dưới vì
+// nhóm route còn lại chỉ dành cho SUPERIOR/ADMIN.
+secretaryRoutes.get("/me", requireAuth, asyncHandler(getMySecretary));
+secretaryRoutes.get("/me/export-pdf", requireAuth, asyncHandler(exportMySecretaryPdf));
+
 secretaryRoutes.use(requireAuth, requireRole("SUPERIOR", "ADMIN"));
 secretaryRoutes.get("/", asyncHandler(listSecretaries));
 secretaryRoutes.post("/", asyncHandler(createSecretary));

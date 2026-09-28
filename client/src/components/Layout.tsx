@@ -5,6 +5,7 @@ import ChangePasswordModal from "./ChangePasswordModal";
 
 const CRUMBS: Record<string, string> = {
   "/": "TRANG CHỦ",
+  "/me": "HỒ SƠ CỦA TÔI",
   "/secretaries": "BAN CHẤP HÀNH ĐOÀN CƠ SỞ",
   "/accounts": "QUẢN LÝ TÀI KHOẢN",
   "/officers": "QUẢN LÝ CÁN BỘ CẤP TRÊN",
@@ -84,21 +85,29 @@ export default function Layout() {
                 <NavLink to="/" end className={linkCls} onClick={() => setMenuOpen(false)}>
                   Trang chủ
                 </NavLink>
-                <NavLink to="/secretaries" className={linkCls} onClick={() => setMenuOpen(false)}>
-                  Ban chấp hành đoàn cơ sở
-                </NavLink>
-                <NavLink to="/accounts" className={linkCls} onClick={() => setMenuOpen(false)}>
-                  Quản lý tài khoản
-                </NavLink>
-                <NavLink to="/officers" className={linkCls} onClick={() => setMenuOpen(false)}>
-                  Quản lý cán bộ cấp trên
-                </NavLink>
-                <NavLink to="/reports" className={linkCls} onClick={() => setMenuOpen(false)}>
-                  Báo cáo – Thống kê
-                </NavLink>
-                <NavLink to="/audit-logs" className={linkCls} onClick={() => setMenuOpen(false)}>
-                  Nhật ký hoạt động
-                </NavLink>
+                {user?.role === "SECRETARY" ? (
+                  <NavLink to="/me" className={linkCls} onClick={() => setMenuOpen(false)}>
+                    Hồ sơ của tôi
+                  </NavLink>
+                ) : (
+                  <>
+                    <NavLink to="/secretaries" className={linkCls} onClick={() => setMenuOpen(false)}>
+                      Ban chấp hành đoàn cơ sở
+                    </NavLink>
+                    <NavLink to="/accounts" className={linkCls} onClick={() => setMenuOpen(false)}>
+                      Quản lý tài khoản
+                    </NavLink>
+                    <NavLink to="/officers" className={linkCls} onClick={() => setMenuOpen(false)}>
+                      Quản lý cán bộ cấp trên
+                    </NavLink>
+                    <NavLink to="/reports" className={linkCls} onClick={() => setMenuOpen(false)}>
+                      Báo cáo – Thống kê
+                    </NavLink>
+                    <NavLink to="/audit-logs" className={linkCls} onClick={() => setMenuOpen(false)}>
+                      Nhật ký hoạt động
+                    </NavLink>
+                  </>
+                )}
               </div>
             )}
           </li>

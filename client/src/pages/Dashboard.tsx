@@ -10,12 +10,21 @@ export default function Dashboard() {
         Xin chào <b>{user?.fullName ?? user?.username}</b>
         {user?.unit && <> — {user.unit.name}</>}.
       </p>
-      <Link
-        to="/secretaries"
-        className="mt-4 inline-block rounded-sm bg-[#3d7ebf] px-4 py-2 text-xs font-bold uppercase text-white hover:opacity-90"
-      >
-        Ban chấp hành đoàn cơ sở
-      </Link>
+      {user?.role === "SECRETARY" ? (
+        <Link
+          to="/me"
+          className="mt-4 inline-block rounded-sm bg-[#3d7ebf] px-4 py-2 text-xs font-bold uppercase text-white hover:opacity-90"
+        >
+          Hồ sơ của tôi
+        </Link>
+      ) : (
+        <Link
+          to="/secretaries"
+          className="mt-4 inline-block rounded-sm bg-[#3d7ebf] px-4 py-2 text-xs font-bold uppercase text-white hover:opacity-90"
+        >
+          Ban chấp hành đoàn cơ sở
+        </Link>
+      )}
     </div>
   );
 }

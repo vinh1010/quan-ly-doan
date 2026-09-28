@@ -1,5 +1,6 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import ProtectedRoute from "./components/ProtectedRoute";
+import StaffRoute from "./components/StaffRoute";
 import Layout from "./components/Layout";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
@@ -8,6 +9,7 @@ import Accounts from "./pages/Accounts";
 import AuditLogs from "./pages/AuditLogs";
 import Reports from "./pages/Reports";
 import Officers from "./pages/Officers";
+import MyProfile from "./pages/MyProfile";
 
 export default function App() {
   return (
@@ -16,11 +18,14 @@ export default function App() {
       <Route element={<ProtectedRoute />}>
         <Route element={<Layout />}>
           <Route path="/" element={<Dashboard />} />
-          <Route path="/secretaries" element={<SecretaryList />} />
-          <Route path="/accounts" element={<Accounts />} />
-          <Route path="/officers" element={<Officers />} />
-          <Route path="/audit-logs" element={<AuditLogs />} />
-          <Route path="/reports" element={<Reports />} />
+          <Route path="/me" element={<MyProfile />} />
+          <Route element={<StaffRoute />}>
+            <Route path="/secretaries" element={<SecretaryList />} />
+            <Route path="/accounts" element={<Accounts />} />
+            <Route path="/officers" element={<Officers />} />
+            <Route path="/audit-logs" element={<AuditLogs />} />
+            <Route path="/reports" element={<Reports />} />
+          </Route>
         </Route>
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
