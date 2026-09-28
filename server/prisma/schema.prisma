@@ -44,6 +44,19 @@ enum SecretaryStatus {
   ENDED  // đã kết thúc
 }
 
+enum DocumentType {
+  CHI_DAO   // Chỉ đạo
+  THONG_BAO // Thông báo
+  MOI_HOP   // Mời họp
+  KHAC      // Khác
+}
+
+enum DocumentStatus {
+  CHUA_XU_LY // Chưa xử lý
+  DANG_XU_LY // Đang xử lý
+  DA_XU_LY   // Đã xử lý
+}
+
 enum AuditAction {
   LOGIN
   LOGOUT
@@ -82,6 +95,7 @@ model User {
 
   secretary        Secretary?
   auditLogs        AuditLog[]
+  createdDocuments IncomingDocument[]
 
   @@index([role, status])
   @@index([unitId])
@@ -106,6 +120,7 @@ model Unit {
 
   secretaries Secretary[]
   users       User[]
+  documents   IncomingDocument[]
 
   @@index([parentId])
   @@index([level])
@@ -171,6 +186,36 @@ model Secretary {
   @@index([phone])
   @@index([status, deletedAt])
   @@index([termStart, termEnd])
+}
+
+// Công văn đến (chức năng "Nhận công văn")
+model IncomingDocument {
+  id           Int            @id @default(autoincrement())
+  number       String         // số công văn, vd. "12/CV-ĐTN"
+  summary      String         // trích yếu / nội dung
+  sender       String         // nơi gửi / cơ quan ban hành
+  issuedDate   DateTime       @db.Date // ngày ban hành
+  receivedDate DateTime       @db.Date // ngày nhận
+  type         DocumentType   @default(KHAC)
+  status       DocumentStatus @default(CHUA_XU_LY)
+  deadline     DateTime?      @db.Date // hạn xử lý
+  assignedTo   String?        // người/bộ phận phụ trách (ghi chú tự do)
+  note         String?
+
+  unitId       Int            // đơn vị phụ trách — dùng để lọc theo phạm vi địa bàn
+  unit         Unit           @relation(fields: [unitId], references: [id])
+
+  createdById  Int
+  createdBy    User           @relation(fields: [createdById], references: [id])
+
+  deletedAt    DateTime?      // xóa mềm, giữ lịch sử
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  @@index([unitId, status])
+  @@index([number])
+  @@index([receivedDate])
+  @@index([deadline])
 }
 
 // Nhật ký hoạt động: mọi thao tác thêm/sửa/xóa/xem/tìm/xuất

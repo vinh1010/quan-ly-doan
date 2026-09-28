@@ -8,6 +8,7 @@ import { prisma } from "./prisma";
 import authRoutes from "./routes/auth";
 import { secretaryRoutes, unitRoutes } from "./routes/secretaries";
 import { accountRoutes, auditLogRoutes, officerRoutes, reportRoutes } from "./routes/system";
+import { documentRoutes } from "./routes/documents";
 
 if (!process.env.JWT_SECRET) {
   throw new Error("Thiếu JWT_SECRET trong server/.env");
@@ -39,6 +40,7 @@ app.use("/api/accounts", accountRoutes);
 app.use("/api/audit-logs", auditLogRoutes);
 app.use("/api/officers", officerRoutes);
 app.use("/api/reports", reportRoutes);
+app.use("/api/documents", documentRoutes);
 
 // Khi deploy: server phục vụ luôn bản build của client (một host duy nhất, không lo CORS)
 const clientDist = path.resolve(__dirname, "../../client/dist");

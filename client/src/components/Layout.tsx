@@ -7,6 +7,7 @@ const CRUMBS: Record<string, string> = {
   "/": "TRANG CHỦ",
   "/me": "HỒ SƠ CỦA TÔI",
   "/secretaries": "BAN CHẤP HÀNH ĐOÀN CƠ SỞ",
+  "/documents": "NHẬN CÔNG VĂN",
   "/accounts": "QUẢN LÝ TÀI KHOẢN",
   "/officers": "QUẢN LÝ CÁN BỘ CẤP TRÊN",
   "/reports": "BÁO CÁO – THỐNG KÊ",
@@ -93,6 +94,9 @@ export default function Layout() {
                   <>
                     <NavLink to="/secretaries" className={linkCls} onClick={() => setMenuOpen(false)}>
                       Ban chấp hành đoàn cơ sở
+                    </NavLink>
+                    <NavLink to="/documents" className={linkCls} onClick={() => setMenuOpen(false)}>
+                      Nhận công văn
                     </NavLink>
                     <NavLink to="/accounts" className={linkCls} onClick={() => setMenuOpen(false)}>
                       Quản lý tài khoản

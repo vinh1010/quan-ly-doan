@@ -10,6 +10,7 @@ import AuditLogs from "./pages/AuditLogs";
 import Reports from "./pages/Reports";
 import Officers from "./pages/Officers";
 import MyProfile from "./pages/MyProfile";
+import Documents from "./pages/Documents";
 
 export default function App() {
   return (
@@ -21,6 +22,7 @@ export default function App() {
           <Route path="/me" element={<MyProfile />} />
           <Route element={<StaffRoute />}>
             <Route path="/secretaries" element={<SecretaryList />} />
+            <Route path="/documents" element={<Documents />} />
             <Route path="/accounts" element={<Accounts />} />
             <Route path="/officers" element={<Officers />} />
             <Route path="/audit-logs" element={<AuditLogs />} />
