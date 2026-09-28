@@ -10,9 +10,9 @@ datasource db {
 // ---------- Enums ----------
 
 enum UserRole {
-  ADMIN      // quản trị hệ thống
-  SUPERIOR   // Cán bộ Đoàn cấp trên (M1)
-  SECRETARY  // Bí thư Đoàn cơ sở
+  ADMIN // quản trị hệ thống
+  SUPERIOR // Cán bộ Đoàn cấp trên (M1)
+  SECRETARY // Bí thư Đoàn cơ sở
 }
 
 enum AccountStatus {
@@ -21,11 +21,11 @@ enum AccountStatus {
 }
 
 enum UnitLevel {
-  TINH      // Thành đoàn / Tỉnh đoàn
-  HUYEN     // Huyện, quận, thành phố thuộc tỉnh
+  TINH // Thành đoàn / Tỉnh đoàn
+  HUYEN // Huyện, quận, thành phố thuộc tỉnh
   XA_PHUONG // Xã, phường, thị trấn (khu vực)
-  CO_SO     // Đoàn cơ sở
-  CHI_DOAN  // Chi đoàn
+  CO_SO // Đoàn cơ sở
+  CHI_DOAN // Chi đoàn
 }
 
 enum Gender {
@@ -35,26 +35,26 @@ enum Gender {
 }
 
 enum SecretaryPosition {
-  BI_THU     // Bí thư Đoàn cơ sở
+  BI_THU // Bí thư Đoàn cơ sở
   PHO_BI_THU // Phó Bí thư
 }
 
 enum SecretaryStatus {
   ACTIVE // đang hoạt động (trong nhiệm kỳ)
-  ENDED  // đã kết thúc
+  ENDED // đã kết thúc
 }
 
 enum DocumentType {
-  CHI_DAO   // Chỉ đạo
+  CHI_DAO // Chỉ đạo
   THONG_BAO // Thông báo
-  MOI_HOP   // Mời họp
-  KHAC      // Khác
+  MOI_HOP // Mời họp
+  KHAC // Khác
 }
 
 enum DocumentStatus {
   CHUA_XU_LY // Chưa xử lý
   DANG_XU_LY // Đang xử lý
-  DA_XU_LY   // Đã xử lý
+  DA_XU_LY // Đã xử lý
 }
 
 enum AuditAction {
@@ -74,30 +74,32 @@ enum AuditAction {
 // ---------- Models ----------
 
 model User {
-  id               Int           @id @default(autoincrement())
-  username         String        @unique
-  passwordHash     String
-  role             UserRole
-  status           AccountStatus @default(ACTIVE)
-  fullName         String?
-  email            String?
-  unitId           Int?
-  unit             Unit?         @relation(fields: [unitId], references: [id])
+  id           Int           @id @default(autoincrement())
+  username     String        @unique
+  passwordHash String
+  role         UserRole
+  status       AccountStatus @default(ACTIVE)
+  fullName     String?
+  email        String?
+  unitId       Int?
+  unit         Unit?         @relation(fields: [unitId], references: [id])
 
   // chính sách đăng nhập: khóa khi nhập sai nhiều lần
-  failedLoginCount Int           @default(0)
-  lockedUntil      DateTime?
-  lastLoginAt      DateTime?
+  failedLoginCount  Int       @default(0)
+  lockedUntil       DateTime?
+  lastLoginAt       DateTime?
   passwordChangedAt DateTime?
 
-  createdAt        DateTime      @default(now())
-  updatedAt        DateTime      @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  secretary          Secretary?
-  auditLogs          AuditLog[]
-  createdDocuments   IncomingDocument[] @relation("DocumentCreatedBy")
-  confirmedDocuments IncomingDocument[] @relation("DocumentConfirmedBy")
-  forwardedDocuments DocumentForward[]
+  secretary            Secretary?
+  auditLogs            AuditLog[]
+  createdDocuments     IncomingDocument[]  @relation("DocumentCreatedBy")
+  confirmedDocuments   IncomingDocument[]  @relation("DocumentConfirmedBy")
+  forwardedDocuments   DocumentForward[]
+  createdEvaluations   MemberEvaluation[]
+  forwardedEvaluations EvaluationForward[]
 
   @@index([role, status])
   @@index([unitId])
@@ -105,26 +107,29 @@ model User {
 
 // Cây đơn vị: Huyện > Xã/Phường (khu vực) > Cơ sở > Chi đoàn
 model Unit {
-  id          Int         @id @default(autoincrement())
-  code        String?     @unique // mã đơn vị / mã vùng
-  name        String
-  level       UnitLevel
-  parentId    Int?
-  parent      Unit?       @relation("UnitTree", fields: [parentId], references: [id])
-  children    Unit[]      @relation("UnitTree")
+  id       Int       @id @default(autoincrement())
+  code     String?   @unique // mã đơn vị / mã vùng
+  name     String
+  level    UnitLevel
+  parentId Int?
+  parent   Unit?     @relation("UnitTree", fields: [parentId], references: [id])
+  children Unit[]    @relation("UnitTree")
 
   address     String?
-  memberCount Int         @default(0) // số Đoàn viên quản lý (dùng cho báo cáo theo khu vực)
-  isActive    Boolean     @default(true)
+  memberCount Int     @default(0) // số Đoàn viên quản lý (dùng cho báo cáo theo khu vực)
+  isActive    Boolean @default(true)
 
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  secretaries    Secretary[]
-  users          User[]
-  documents      IncomingDocument[]
-  forwardsFrom   DocumentForward[] @relation("ForwardFromUnit")
-  forwardsTo     DocumentForward[] @relation("ForwardToUnit")
+  secretaries      Secretary[]
+  users            User[]
+  documents        IncomingDocument[]
+  forwardsFrom     DocumentForward[]   @relation("ForwardFromUnit")
+  forwardsTo       DocumentForward[]   @relation("ForwardToUnit")
+  evaluations      MemberEvaluation[]
+  evalForwardsFrom EvaluationForward[] @relation("EvalForwardFromUnit")
+  evalForwardsTo   EvaluationForward[] @relation("EvalForwardToUnit")
 
   @@index([parentId])
   @@index([level])
@@ -133,57 +138,57 @@ model Unit {
 
 // Hồ sơ Bí thư / Phó Bí thư Đoàn cơ sở
 model Secretary {
-  id              Int               @id @default(autoincrement())
-  userId          Int?              @unique
-  user            User?             @relation(fields: [userId], references: [id])
-  unitId          Int
-  unit            Unit              @relation(fields: [unitId], references: [id])
+  id     Int   @id @default(autoincrement())
+  userId Int?  @unique
+  user   User? @relation(fields: [userId], references: [id])
+  unitId Int
+  unit   Unit  @relation(fields: [unitId], references: [id])
 
   // Thông tin cá nhân
   fullName        String
-  dob             DateTime          @db.Date
+  dob             DateTime  @db.Date
   gender          Gender
   phone           String
   email           String?
-  cccd            String            @unique
-  cccdIssuedDate  DateTime?         @db.Date
+  cccd            String    @unique
+  cccdIssuedDate  DateTime? @db.Date
   cccdIssuedPlace String?
   ethnicity       String?
   religion        String?
   address         String?
-  education       String?           // trình độ văn hóa (vd. Hệ 12/12)
-  training        String?           // trình độ chuyên môn (vd. Cử nhân)
+  education       String? // trình độ văn hóa (vd. Hệ 12/12)
+  training        String? // trình độ chuyên môn (vd. Cử nhân)
   maritalStatus   String?
   avatarUrl       String?
 
   // Theo màn hình "Cập nhật thông tin cán bộ đoàn"
-  memberCode        String?         // mã định danh đoàn viên
-  politicalTheory   String?         // lý luận chính trị
-  itLevel           String?         // trình độ tin học
-  language          String?         // ngoại ngữ
-  hometownProvince  String?         // quê quán (tỉnh/thành)
-  hometownWard      String?         // quê quán (xã/phường)
-  residenceProvince String?         // thường trú (tỉnh/thành)
-  residenceWard     String?         // thường trú (xã/phường)
-  unionJoinDate     DateTime?       @db.Date // thời gian vào Đoàn
-  unionJoinPlace    String?         // nơi vào Đoàn
-  cardIssuePlace    String?         // nơi cấp thẻ
-  partyJoinDate     DateTime?       @db.Date // thời gian vào Đảng
-  partyPosition     String?         // chức vụ Đảng
-  association       String?         // hiệp hội
-  occupation        String?         // nghề nghiệp hiện nay
+  memberCode        String? // mã định danh đoàn viên
+  politicalTheory   String? // lý luận chính trị
+  itLevel           String? // trình độ tin học
+  language          String? // ngoại ngữ
+  hometownProvince  String? // quê quán (tỉnh/thành)
+  hometownWard      String? // quê quán (xã/phường)
+  residenceProvince String? // thường trú (tỉnh/thành)
+  residenceWard     String? // thường trú (xã/phường)
+  unionJoinDate     DateTime? @db.Date // thời gian vào Đoàn
+  unionJoinPlace    String? // nơi vào Đoàn
+  cardIssuePlace    String? // nơi cấp thẻ
+  partyJoinDate     DateTime? @db.Date // thời gian vào Đảng
+  partyPosition     String? // chức vụ Đảng
+  association       String? // hiệp hội
+  occupation        String? // nghề nghiệp hiện nay
 
   // Chức vụ / nhiệm kỳ
-  position        SecretaryPosition @default(BI_THU)
-  termStart       DateTime          @db.Date
-  termEnd         DateTime?         @db.Date
-  termLabel       String?           // ví dụ "2024 - 2027"
-  status          SecretaryStatus   @default(ACTIVE)
+  position  SecretaryPosition @default(BI_THU)
+  termStart DateTime          @db.Date
+  termEnd   DateTime?         @db.Date
+  termLabel String? // ví dụ "2024 - 2027"
+  status    SecretaryStatus   @default(ACTIVE)
 
   // Xóa mềm: giữ lịch sử nhiệm kỳ
-  deletedAt       DateTime?
-  createdAt       DateTime          @default(now())
-  updatedAt       DateTime          @updatedAt
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 
   @@index([unitId, position])
   @@index([fullName])
@@ -195,35 +200,35 @@ model Secretary {
 // Công văn đến (chức năng "Nhận công văn")
 model IncomingDocument {
   id           Int            @id @default(autoincrement())
-  number       String         // số công văn, vd. "12/CV-ĐTN"
-  summary      String         // trích yếu / nội dung
-  sender       String         // nơi gửi / cơ quan ban hành
+  number       String // số công văn, vd. "12/CV-ĐTN"
+  summary      String // trích yếu / nội dung
+  sender       String // nơi gửi / cơ quan ban hành
   issuedDate   DateTime       @db.Date // ngày ban hành
   receivedDate DateTime       @db.Date // ngày nhận
   type         DocumentType   @default(KHAC)
   status       DocumentStatus @default(CHUA_XU_LY)
   deadline     DateTime?      @db.Date // hạn xử lý
-  assignedTo   String?        // người/bộ phận phụ trách (ghi chú tự do)
+  assignedTo   String? // người/bộ phận phụ trách (ghi chú tự do)
   note         String?
 
-  unitId       Int            // đơn vị đang phụ trách — dùng để lọc theo phạm vi địa bàn; đổi khi chuyển tiếp
-  unit         Unit           @relation(fields: [unitId], references: [id])
+  unitId Int // đơn vị đang phụ trách — dùng để lọc theo phạm vi địa bàn; đổi khi chuyển tiếp
+  unit   Unit @relation(fields: [unitId], references: [id])
 
-  createdById  Int
-  createdBy    User           @relation("DocumentCreatedBy", fields: [createdById], references: [id])
+  createdById Int
+  createdBy   User @relation("DocumentCreatedBy", fields: [createdById], references: [id])
 
   // Xác nhận đã thực hiện: chỉ đơn vị đang phụ trách (unitId hiện tại) mới xác nhận được.
   // Sau khi xác nhận thì khóa, không sửa/chuyển tiếp được nữa.
   confirmedAt   DateTime?
   confirmedById Int?
-  confirmedBy   User?          @relation("DocumentConfirmedBy", fields: [confirmedById], references: [id])
-  resultNote    String?        // báo cáo kết quả thực hiện
+  confirmedBy   User?     @relation("DocumentConfirmedBy", fields: [confirmedById], references: [id])
+  resultNote    String? // báo cáo kết quả thực hiện
 
-  forwards     DocumentForward[]
+  forwards DocumentForward[]
 
-  deletedAt    DateTime?      // xóa mềm, giữ lịch sử
-  createdAt    DateTime       @default(now())
-  updatedAt    DateTime       @updatedAt
+  deletedAt DateTime? // xóa mềm, giữ lịch sử
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 
   @@index([unitId, status])
   @@index([number])
@@ -233,22 +238,71 @@ model IncomingDocument {
 
 // Lịch sử chuyển tiếp công văn giữa các đơn vị (cấp trên đẩy xuống cấp dưới trong phạm vi của mình)
 model DocumentForward {
-  id           Int              @id @default(autoincrement())
-  documentId   Int
-  document     IncomingDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  id         Int              @id @default(autoincrement())
+  documentId Int
+  document   IncomingDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
 
-  fromUnitId   Int
-  fromUnit     Unit             @relation("ForwardFromUnit", fields: [fromUnitId], references: [id])
-  toUnitId     Int
-  toUnit       Unit             @relation("ForwardToUnit", fields: [toUnitId], references: [id])
+  fromUnitId Int
+  fromUnit   Unit @relation("ForwardFromUnit", fields: [fromUnitId], references: [id])
+  toUnitId   Int
+  toUnit     Unit @relation("ForwardToUnit", fields: [toUnitId], references: [id])
 
   forwardedById Int
-  forwardedBy   User            @relation(fields: [forwardedById], references: [id])
+  forwardedBy   User    @relation(fields: [forwardedById], references: [id])
   note          String?
 
-  createdAt    DateTime         @default(now())
+  createdAt DateTime @default(now())
 
   @@index([documentId, createdAt])
+}
+
+// Đánh giá, xếp loại Đoàn viên — tổng hợp số liệu theo đơn vị và theo năm (không phải theo từng
+// đoàn viên). Bí thư cấp thôn (SECRETARY) tự nhập cho đơn vị của mình, rồi "chuyển lên" — mỗi lần
+// chuyển chỉ đổi unitId sang đúng đơn vị cha (thôn -> xã -> huyện), lưu 1 dòng lịch sử.
+model MemberEvaluation {
+  id             Int     @id @default(autoincrement())
+  year           Int // năm đánh giá, vd. 2026
+  excellentCount Int     @default(0) // Xuất sắc
+  goodCount      Int     @default(0) // Tốt
+  fairCount      Int     @default(0) // Khá
+  averageCount   Int     @default(0) // Trung bình
+  weakCount      Int     @default(0) // Yếu
+  note           String?
+
+  unitId Int // đơn vị đang giữ bản đánh giá — đổi khi chuyển lên cấp trên
+  unit   Unit @relation(fields: [unitId], references: [id])
+
+  createdById Int
+  createdBy   User @relation(fields: [createdById], references: [id])
+
+  forwards EvaluationForward[]
+
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([unitId, year])
+  @@index([year])
+}
+
+// Lịch sử chuyển đánh giá lên cấp trên (thôn -> xã -> huyện)
+model EvaluationForward {
+  id           Int              @id @default(autoincrement())
+  evaluationId Int
+  evaluation   MemberEvaluation @relation(fields: [evaluationId], references: [id], onDelete: Cascade)
+
+  fromUnitId Int
+  fromUnit   Unit @relation("EvalForwardFromUnit", fields: [fromUnitId], references: [id])
+  toUnitId   Int
+  toUnit     Unit @relation("EvalForwardToUnit", fields: [toUnitId], references: [id])
+
+  forwardedById Int
+  forwardedBy   User    @relation(fields: [forwardedById], references: [id])
+  note          String?
+
+  createdAt DateTime @default(now())
+
+  @@index([evaluationId, createdAt])
 }
 
 // Nhật ký hoạt động: mọi thao tác thêm/sửa/xóa/xem/tìm/xuất
@@ -257,7 +311,7 @@ model AuditLog {
   userId    Int
   user      User        @relation(fields: [userId], references: [id])
   action    AuditAction
-  target    String      // ví dụ "Secretary"
+  target    String // ví dụ "Secretary"
   targetId  Int?
   detail    Json?
   ip        String?
