@@ -59,6 +59,10 @@ export const fetchEvaluations = (f: EvalFilters) =>
     .get<{ items: MemberEvaluation[]; total: number; page: number; pageSize: number }>("/evaluations", { params: clean(f) })
     .then((r) => r.data);
 
+/** Đánh giá do chính mình tạo, không giới hạn theo phạm vi hiện tại — thấy cả bản đã chuyển đi. Dùng cho Trang chủ. */
+export const fetchMyEvaluations = (year?: number) =>
+  api.get<{ items: MemberEvaluation[] }>("/evaluations/mine", { params: clean({ year }) }).then((r) => r.data.items);
+
 export const createEvaluation = (v: EvalInput) => api.post<{ message: string }>("/evaluations", v).then((r) => r.data);
 
 export const updateEvaluation = (id: number, v: EvalInput) =>

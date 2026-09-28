@@ -5,6 +5,7 @@ import {
   forwardEvaluation,
   getEvaluation,
   listEvaluations,
+  listMyEvaluations,
   updateEvaluation,
 } from "../controllers/evaluations.controller";
 import { requireAuth, requireRole } from "../middleware/auth";
@@ -15,6 +16,7 @@ export const evaluationRoutes = Router();
 evaluationRoutes.use(requireAuth, requireRole("SECRETARY", "SUPERIOR", "ADMIN"));
 evaluationRoutes.get("/", asyncHandler(listEvaluations));
 evaluationRoutes.post("/", asyncHandler(createEvaluation));
+evaluationRoutes.get("/mine", asyncHandler(listMyEvaluations));
 evaluationRoutes.get("/:id", asyncHandler(getEvaluation));
 evaluationRoutes.put("/:id", asyncHandler(updateEvaluation));
 evaluationRoutes.delete("/:id", asyncHandler(deleteEvaluation));

@@ -99,6 +99,24 @@ export async function listEvaluations(req: Request, res: Response) {
   res.json({ items, total, page: q.page, pageSize: q.pageSize });
 }
 
+/**
+ * Đánh giá do chính người đang đăng nhập tạo, không giới hạn theo phạm vi địa bàn hiện tại —
+ * để Bí thư cấp thôn vẫn thấy bản mình nhập ngay cả sau khi đã chuyển lên cấp trên (lúc đó
+ * unitId không còn trong phạm vi của họ nữa nên listEvaluations không trả về). Dùng cho Trang chủ.
+ */
+export async function listMyEvaluations(req: Request, res: Response) {
+  const parsed = z.object({ year: z.coerce.number().int().optional() }).safeParse(req.query);
+  if (!parsed.success) return sendValidationError(res, parsed.error);
+
+  const items = await prisma.memberEvaluation.findMany({
+    where: { deletedAt: null, createdById: req.auth!.sub, ...(parsed.data.year ? { year: parsed.data.year } : {}) },
+    include: listInclude,
+    orderBy: [{ year: "desc" }, { id: "desc" }],
+    take: 20,
+  });
+  res.json({ items });
+}
+
 export async function getEvaluation(req: Request, res: Response) {
   const id = Number(req.params.id);
   if (!Number.isInteger(id)) return res.status(400).json({ message: "Mã không hợp lệ" });

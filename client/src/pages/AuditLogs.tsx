@@ -2,28 +2,13 @@ import { useState, type FormEvent } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { fetchAuditLogs } from "../api/system";
 import { useAuth } from "../hooks/useAuth";
+import { ACTION_LABEL, formatDateTime } from "../lib/constants";
 
 const PAGE_SIZE = 20;
 const HEAD = "border border-white/30 px-3 py-2 text-center text-[13px] font-medium";
 const CELL = "px-3 py-2.5 text-[13px]";
 const field =
   "mt-1 w-full border-0 border-b border-slate-300 bg-transparent py-1 text-sm outline-none focus:border-[#1890ff]";
-
-const ACTION_LABEL: Record<string, string> = {
-  LOGIN: "Đăng nhập",
-  LOGOUT: "Đăng xuất",
-  CHANGE_PASSWORD: "Đổi mật khẩu",
-  CREATE: "Thêm mới",
-  UPDATE: "Cập nhật",
-  DELETE: "Xóa",
-  VIEW: "Xem chi tiết",
-  SEARCH: "Tìm kiếm",
-  EXPORT: "Xuất dữ liệu",
-  LOCK_ACCOUNT: "Khóa tài khoản",
-  UNLOCK_ACCOUNT: "Kích hoạt tài khoản",
-};
-
-const formatDateTime = (iso: string) => new Date(iso).toLocaleString("vi-VN", { hour12: false });
 
 export default function AuditLogs() {
   const { user } = useAuth();
