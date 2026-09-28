@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { fetchUnits, parseApiError } from "../api/secretaries";
-import { downloadReport, fetchAreaReport } from "../api/system";
+import { downloadReport, downloadReportPdf, fetchAreaReport } from "../api/system";
 import { useToast } from "../components/Toast";
 
 const HEAD = "border border-white/30 px-1.5 py-2 text-center text-xs font-medium sm:px-3 sm:text-[13px]";
@@ -20,6 +20,12 @@ export default function Reports() {
   const exportXlsx = useMutation({
     mutationFn: () => downloadReport(unitId),
     onSuccess: () => toast("success", "Đã xuất file Excel"),
+    onError: (err) => toast("error", parseApiError(err).message),
+  });
+
+  const exportPdf = useMutation({
+    mutationFn: () => downloadReportPdf(unitId),
+    onSuccess: () => toast("success", "Đã xuất file PDF"),
     onError: (err) => toast("error", parseApiError(err).message),
   });
 
@@ -48,6 +54,13 @@ export default function Reports() {
           className="rounded-sm bg-[#1b7a3a] px-5 py-2 text-xs font-bold uppercase text-white hover:opacity-90 disabled:opacity-50"
         >
           {exportXlsx.isPending ? "Đang xuất..." : "Xuất Excel"}
+        </button>
+        <button
+          onClick={() => exportPdf.mutate()}
+          disabled={exportPdf.isPending || items.length === 0}
+          className="rounded-sm bg-[#c0392b] px-5 py-2 text-xs font-bold uppercase text-white hover:opacity-90 disabled:opacity-50"
+        >
+          {exportPdf.isPending ? "Đang xuất..." : "Xuất PDF"}
         </button>
         <button
           onClick={() => window.print()}

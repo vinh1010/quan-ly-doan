@@ -74,6 +74,19 @@ export async function downloadReport(unitId?: string) {
   URL.revokeObjectURL(url);
 }
 
+/** Tải file PDF (bảng thống kê theo khu vực) */
+export async function downloadReportPdf(unitId?: string) {
+  const res = await api.get<Blob>("/reports/export-pdf", { params: clean({ unitId }), responseType: "blob" });
+  const url = URL.createObjectURL(res.data);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `bao-cao-khu-vuc-${new Date().toISOString().slice(0, 10)}.pdf`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
 export interface Officer {
   id: number;
   username: string;

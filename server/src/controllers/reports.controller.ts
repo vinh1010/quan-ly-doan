@@ -3,6 +3,7 @@ import ExcelJS from "exceljs";
 import { z } from "zod";
 import { prisma } from "../prisma";
 import { audit } from "../lib/http";
+import { createPdfBuffer } from "../lib/pdf";
 import { narrowUnits, scopeOf, unitWithDescendants } from "./units.controller";
 
 const query = z.object({ unitId: z.coerce.number().int().positive().optional() });
@@ -166,4 +167,56 @@ export async function exportReport(req: Request, res: Response) {
   res.setHeader("Content-Disposition", `attachment; filename="bao-cao-bi-thu-${stamp}.xlsx"`);
   await wb.xlsx.write(res);
   res.end();
+}
+
+/** Xuất PDF bảng thống kê theo khu vực (mục 7.4 trong tài liệu nghiệp vụ). */
+export async function exportReportPdf(req: Request, res: Response) {
+  const parsed = query.safeParse(req.query);
+  if (!parsed.success) return res.status(400).json({ message: "Đơn vị không hợp lệ" });
+  const { unitId } = parsed.data;
+
+  const rows = await buildAreaReport(await allowedUnits(req, unitId));
+  const sum = (k: "secretaries" | "deputies" | "members") => rows.reduce((t, r) => t + r[k], 0);
+
+  const tableBody = [
+    ["Khu vực (xã/phường)", "Thuộc", "Số Bí thư", "Số Phó Bí thư", "Đoàn viên quản lý"].map((text) => ({
+      text,
+      style: "th",
+    })),
+    ...rows.map((r) => [r.name, r.parentName ?? "", String(r.secretaries), String(r.deputies), String(r.members)]),
+    [
+      { text: "Tổng cộng", bold: true },
+      "",
+      { text: String(sum("secretaries")), bold: true },
+      { text: String(sum("deputies")), bold: true },
+      { text: String(sum("members")), bold: true },
+    ],
+  ];
+
+  const now = new Date();
+  const buffer = await createPdfBuffer({
+    content: [
+      { text: "BÁO CÁO THỐNG KÊ BAN CHẤP HÀNH ĐOÀN", style: "h1" },
+      { text: "Thống kê theo khu vực (xã/phường)", margin: [0, 0, 0, 2] },
+      { text: `Xuất lúc: ${now.toLocaleString("vi-VN")}`, style: "muted", margin: [0, 0, 0, 12] },
+      {
+        table: { headerRows: 1, widths: ["*", "*", "auto", "auto", "auto"], body: tableBody },
+        layout: {
+          fillColor: (rowIndex: number) => (rowIndex === 0 ? "#2260CF" : rowIndex % 2 === 0 ? "#F5F7FB" : null),
+        },
+      },
+    ],
+    styles: {
+      h1: { fontSize: 16, bold: true, margin: [0, 0, 0, 6] },
+      muted: { fontSize: 9, color: "#666666" },
+      th: { bold: true, color: "#FFFFFF" },
+    },
+  });
+
+  await audit(req, "EXPORT", "Report", undefined, { unitId: unitId ?? null, areas: rows.length, format: "pdf" });
+
+  const stamp = now.toISOString().slice(0, 10);
+  res.setHeader("Content-Type", "application/pdf");
+  res.setHeader("Content-Disposition", `attachment; filename="bao-cao-khu-vuc-${stamp}.pdf"`);
+  res.send(buffer);
 }
