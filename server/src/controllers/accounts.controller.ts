@@ -54,6 +54,7 @@ export async function listAccounts(req: Request, res: Response) {
       take: q.pageSize,
     }),
   ]);
+  await audit(req, "SEARCH", "User", undefined, { filters: req.query, total });
   res.json({ items, total, page: q.page, pageSize: q.pageSize });
 }
 
