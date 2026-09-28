@@ -130,6 +130,16 @@ export const updateSecretary = (id: number, v: SecretaryInput) => api.put(`/secr
 
 export const deleteSecretary = (id: number) => api.delete(`/secretaries/${id}`).then((r) => r.data);
 
+export interface BulkDeleteResult {
+  message: string;
+  deletedCount: number;
+  skippedInTerm: { id: number; fullName: string }[];
+  notFoundCount: number;
+}
+
+export const deleteSecretariesBulk = (ids: number[]) =>
+  api.post<BulkDeleteResult>("/secretaries/bulk-delete", { ids }).then((r) => r.data);
+
 /** Lấy thông báo lỗi + lỗi theo từng trường từ phản hồi của server */
 export function parseApiError(err: unknown): { message: string; fields: Record<string, string> } {
   const data = (err as { response?: { data?: { message?: string; errors?: Record<string, string> } } })?.response?.data;

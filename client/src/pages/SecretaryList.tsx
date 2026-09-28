@@ -2,6 +2,7 @@ import { useState, type FormEvent } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  deleteSecretariesBulk,
   deleteSecretary,
   fetchSecretaries,
   fetchUnits,
@@ -73,6 +74,8 @@ export default function SecretaryList() {
   const [askCccd, setAskCccd] = useState(false);
   const [modal, setModal] = useState<{ mode: ModalMode; id?: number; cccd?: string } | null>(null);
   const [toDelete, setToDelete] = useState<Secretary | null>(null);
+  const [selected, setSelected] = useState<Set<number>>(new Set());
+  const [confirmBulk, setConfirmBulk] = useState(false);
 
   const units = useQuery({ queryKey: ["units"], queryFn: () => fetchUnits() });
   const unitOptions = (units.data ?? []).filter((u) => u.level === "CO_SO" || u.level === "XA_PHUONG");
@@ -88,6 +91,7 @@ export default function SecretaryList() {
       if (k !== "pageSize" && v !== "" && !(k === "page" && v === 1)) next.set(k, String(v));
     });
     setParams(next);
+    setSelected(new Set()); // đổi trang/bộ lọc thì bỏ chọn, tránh xóa nhầm bản ghi không còn hiển thị
   };
 
   const search = (e: FormEvent) => {
@@ -104,9 +108,15 @@ export default function SecretaryList() {
 
   const remove = useMutation({
     mutationFn: (s: Secretary) => deleteSecretary(s.id),
-    onSuccess: (r: { message: string }) => {
+    onSuccess: (r: { message: string }, s) => {
       toast("success", r.message);
       setToDelete(null);
+      setSelected((prev) => {
+        if (!prev.has(s.id)) return prev;
+        const next = new Set(prev);
+        next.delete(s.id);
+        return next;
+      });
       refresh();
     },
     onError: (err) => {
@@ -114,6 +124,33 @@ export default function SecretaryList() {
       setToDelete(null);
     },
   });
+
+  const bulkRemove = useMutation({
+    mutationFn: () => deleteSecretariesBulk([...selected]),
+    onSuccess: (r) => {
+      setConfirmBulk(false);
+      setSelected(new Set());
+      refresh();
+      if (r.skippedInTerm.length === 0) {
+        toast("success", r.message);
+      } else {
+        const names = r.skippedInTerm.map((s) => s.fullName).join(", ");
+        toast("error", `${r.message}. Bỏ qua vì đang tại chức: ${names}`);
+      }
+    },
+    onError: (err) => {
+      toast("error", parseApiError(err).message);
+      setConfirmBulk(false);
+    },
+  });
+
+  const toggleSelect = (id: number) =>
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
 
   // bước 1 của Thêm mới: kiểm tra CCCD chưa tồn tại rồi mở form
   const continueWithCccd = async (cccd: string) => {
@@ -188,6 +225,28 @@ export default function SecretaryList() {
         </details>
       </form>
 
+      {selected.size > 0 && (
+        <div className="no-print sticky top-0 z-10 flex flex-wrap items-center justify-between gap-2 border-b bg-[#fff7e6] px-4 py-2 text-sm sm:px-9">
+          <span>
+            Đã chọn <strong>{selected.size}</strong> cán bộ
+          </span>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setSelected(new Set())}
+              className="rounded-sm border border-slate-300 px-3 py-1.5 text-xs font-bold uppercase text-slate-600 hover:bg-slate-100"
+            >
+              Bỏ chọn
+            </button>
+            <button
+              onClick={() => setConfirmBulk(true)}
+              className="rounded-sm bg-[#d32f2f] px-4 py-1.5 text-xs font-bold uppercase text-white hover:opacity-90"
+            >
+              Xóa đã chọn
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="overflow-x-auto px-4 py-5 sm:px-[43px]">
         {/* Điện thoại: hiển thị dạng thẻ thay cho bảng 15 cột */}
         <div className="grid gap-3 sm:grid-cols-2 xl:hidden">
@@ -202,6 +261,13 @@ export default function SecretaryList() {
             <div key={s.id} className="rounded border border-slate-200 p-3">
               <div className="flex items-start justify-between gap-2">
                 <div className="flex min-w-0 items-center gap-3">
+                  <input
+                    type="checkbox"
+                    aria-label={`Chọn ${s.fullName}`}
+                    checked={selected.has(s.id)}
+                    onChange={() => toggleSelect(s.id)}
+                    className="h-4 w-4 shrink-0 accent-[#1e88e5]"
+                  />
                   <Avatar src={s.avatarUrl} name={s.fullName} size={44} />
                   <button onClick={() => setModal({ mode: "view", id: s.id })} className="text-left text-sm font-bold uppercase text-[#1e88e5]">
                     {s.fullName}
@@ -247,6 +313,24 @@ export default function SecretaryList() {
         <table className="hidden w-full min-w-[1100px] border-collapse text-left xl:table">
           <thead className="bg-[#2260cf] text-white">
             <tr>
+              <th rowSpan={2} className={HEAD + " w-10"}>
+                <input
+                  type="checkbox"
+                  aria-label="Chọn tất cả trong trang này"
+                  className="h-4 w-4 accent-white"
+                  checked={items.length > 0 && items.every((s) => selected.has(s.id))}
+                  onChange={(e) =>
+                    setSelected((prev) => {
+                      const next = new Set(prev);
+                      for (const s of items) {
+                        if (e.target.checked) next.add(s.id);
+                        else next.delete(s.id);
+                      }
+                      return next;
+                    })
+                  }
+                />
+              </th>
               <th rowSpan={2} className={HEAD + " w-10"}>#</th>
               <th rowSpan={2} className={HEAD + " text-left"}>Họ và Tên</th>
               <th rowSpan={2} className={HEAD}>Chức vụ Đoàn</th>
@@ -281,6 +365,15 @@ export default function SecretaryList() {
           <tbody>
             {items.map((s, idx) => (
               <tr key={s.id} className="border-b bg-white hover:bg-slate-50">
+                <td className={CELL + " text-center"}>
+                  <input
+                    type="checkbox"
+                    aria-label={`Chọn ${s.fullName}`}
+                    checked={selected.has(s.id)}
+                    onChange={() => toggleSelect(s.id)}
+                    className="h-4 w-4 accent-[#1e88e5]"
+                  />
+                </td>
                 <td className={CELL + " text-center"}>{(applied.page - 1) * PAGE_SIZE + idx + 1}</td>
                 <td className={CELL}>
                   <div className="flex items-center gap-2">
@@ -321,7 +414,7 @@ export default function SecretaryList() {
             ))}
             {!list.isFetching && items.length === 0 && (
               <tr>
-                <td colSpan={15} className="px-4 py-10 text-center text-slate-500">
+                <td colSpan={16} className="px-4 py-10 text-center text-slate-500">
                   {list.isError ? "Không thể tải dữ liệu" : "Không tìm thấy kết quả"}
                 </td>
               </tr>
@@ -395,6 +488,24 @@ export default function SecretaryList() {
         >
           <p className="font-medium text-slate-800">{toDelete.fullName}</p>
           <p>{toDelete.unit.name}</p>
+        </ConfirmDialog>
+      )}
+
+      {confirmBulk && (
+        <ConfirmDialog
+          title={`Bạn có chắc chắn xóa ${selected.size} cán bộ đã chọn ?`}
+          busy={bulkRemove.isPending}
+          onCancel={() => setConfirmBulk(false)}
+          onConfirm={() => bulkRemove.mutate()}
+        >
+          {(() => {
+            const inTermCount = items.filter((s) => selected.has(s.id) && isInTerm(s)).length;
+            return inTermCount > 0 ? (
+              <p>
+                Trong đó <strong>{inTermCount}</strong> người đang tại chức sẽ được bỏ qua, không xóa.
+              </p>
+            ) : null;
+          })()}
         </ConfirmDialog>
       )}
     </div>

@@ -394,3 +394,47 @@ export async function deleteSecretary(req: Request, res: Response) {
   await audit(req, "DELETE", "Secretary", id, { fullName: current.fullName });
   res.json({ message: "Xóa dữ liệu thành công" });
 }
+
+const bulkDeleteSchema = z.object({
+  ids: z
+    .array(z.coerce.number().int().positive())
+    .min(1, "Chưa chọn Bí thư nào")
+    .max(100, "Chỉ xóa tối đa 100 mục trong một lần"),
+});
+
+/**
+ * Xóa hàng loạt (mềm). Cùng quy tắc RB5 với xóa từng cái: bỏ qua (không xóa) những người
+ * đang tại chức thay vì hủy toàn bộ thao tác, để không phải chọn lại từ đầu khi lỡ chọn nhầm.
+ */
+export async function deleteSecretariesBulk(req: Request, res: Response) {
+  const parsed = bulkDeleteSchema.safeParse(req.body);
+  if (!parsed.success) return sendValidationError(res, parsed.error);
+  const ids = [...new Set(parsed.data.ids)];
+
+  const scope = await scopeOf(req);
+  const found = await prisma.secretary.findMany({
+    where: { id: { in: ids }, deletedAt: null, ...(scope ? { unitId: { in: scope } } : {}) },
+  });
+
+  const today = new Date();
+  const inTerm = found.filter((s) => s.status === "ACTIVE" && (!s.termEnd || s.termEnd >= today));
+  const toDelete = found.filter((s) => !inTerm.includes(s));
+  const foundIds = new Set(found.map((s) => s.id));
+  const notFoundCount = ids.filter((id) => !foundIds.has(id)).length;
+
+  if (toDelete.length > 0) {
+    await prisma.$transaction(async (tx) => {
+      await tx.secretary.updateMany({ where: { id: { in: toDelete.map((s) => s.id) } }, data: { deletedAt: today } });
+      const userIds = toDelete.map((s) => s.userId).filter((id): id is number => id != null);
+      if (userIds.length > 0) await tx.user.updateMany({ where: { id: { in: userIds } }, data: { status: "LOCKED" } });
+    });
+    for (const s of toDelete) await audit(req, "DELETE", "Secretary", s.id, { fullName: s.fullName, bulk: true });
+  }
+
+  res.json({
+    message: `Đã xóa ${toDelete.length}/${ids.length} mục đã chọn`,
+    deletedCount: toDelete.length,
+    skippedInTerm: inTerm.map((s) => ({ id: s.id, fullName: s.fullName })),
+    notFoundCount,
+  });
+}

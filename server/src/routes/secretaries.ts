@@ -1,6 +1,7 @@
 import { Router } from "express";
 import {
   createSecretary,
+  deleteSecretariesBulk,
   deleteSecretary,
   getSecretary,
   listSecretaries,
@@ -14,6 +15,7 @@ export const secretaryRoutes = Router();
 secretaryRoutes.use(requireAuth, requireRole("SUPERIOR", "ADMIN"));
 secretaryRoutes.get("/", asyncHandler(listSecretaries));
 secretaryRoutes.post("/", asyncHandler(createSecretary));
+secretaryRoutes.post("/bulk-delete", asyncHandler(deleteSecretariesBulk));
 secretaryRoutes.get("/:id", asyncHandler(getSecretary));
 secretaryRoutes.put("/:id", asyncHandler(updateSecretary));
 secretaryRoutes.delete("/:id", asyncHandler(deleteSecretary));
