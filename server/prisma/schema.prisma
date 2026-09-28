@@ -93,9 +93,11 @@ model User {
   createdAt        DateTime      @default(now())
   updatedAt        DateTime      @updatedAt
 
-  secretary        Secretary?
-  auditLogs        AuditLog[]
-  createdDocuments IncomingDocument[]
+  secretary          Secretary?
+  auditLogs          AuditLog[]
+  createdDocuments   IncomingDocument[] @relation("DocumentCreatedBy")
+  confirmedDocuments IncomingDocument[] @relation("DocumentConfirmedBy")
+  forwardedDocuments DocumentForward[]
 
   @@index([role, status])
   @@index([unitId])
@@ -118,9 +120,11 @@ model Unit {
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
 
-  secretaries Secretary[]
-  users       User[]
-  documents   IncomingDocument[]
+  secretaries    Secretary[]
+  users          User[]
+  documents      IncomingDocument[]
+  forwardsFrom   DocumentForward[] @relation("ForwardFromUnit")
+  forwardsTo     DocumentForward[] @relation("ForwardToUnit")
 
   @@index([parentId])
   @@index([level])
@@ -202,11 +206,20 @@ model IncomingDocument {
   assignedTo   String?        // người/bộ phận phụ trách (ghi chú tự do)
   note         String?
 
-  unitId       Int            // đơn vị phụ trách — dùng để lọc theo phạm vi địa bàn
+  unitId       Int            // đơn vị đang phụ trách — dùng để lọc theo phạm vi địa bàn; đổi khi chuyển tiếp
   unit         Unit           @relation(fields: [unitId], references: [id])
 
   createdById  Int
-  createdBy    User           @relation(fields: [createdById], references: [id])
+  createdBy    User           @relation("DocumentCreatedBy", fields: [createdById], references: [id])
+
+  // Xác nhận đã thực hiện: chỉ đơn vị đang phụ trách (unitId hiện tại) mới xác nhận được.
+  // Sau khi xác nhận thì khóa, không sửa/chuyển tiếp được nữa.
+  confirmedAt   DateTime?
+  confirmedById Int?
+  confirmedBy   User?          @relation("DocumentConfirmedBy", fields: [confirmedById], references: [id])
+  resultNote    String?        // báo cáo kết quả thực hiện
+
+  forwards     DocumentForward[]
 
   deletedAt    DateTime?      // xóa mềm, giữ lịch sử
   createdAt    DateTime       @default(now())
@@ -216,6 +229,26 @@ model IncomingDocument {
   @@index([number])
   @@index([receivedDate])
   @@index([deadline])
+}
+
+// Lịch sử chuyển tiếp công văn giữa các đơn vị (cấp trên đẩy xuống cấp dưới trong phạm vi của mình)
+model DocumentForward {
+  id           Int              @id @default(autoincrement())
+  documentId   Int
+  document     IncomingDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  fromUnitId   Int
+  fromUnit     Unit             @relation("ForwardFromUnit", fields: [fromUnitId], references: [id])
+  toUnitId     Int
+  toUnit       Unit             @relation("ForwardToUnit", fields: [toUnitId], references: [id])
+
+  forwardedById Int
+  forwardedBy   User            @relation(fields: [forwardedById], references: [id])
+  note          String?
+
+  createdAt    DateTime         @default(now())
+
+  @@index([documentId, createdAt])
 }
 
 // Nhật ký hoạt động: mọi thao tác thêm/sửa/xóa/xem/tìm/xuất

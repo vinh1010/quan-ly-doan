@@ -1,7 +1,9 @@
 import { Router } from "express";
 import {
+  confirmDocument,
   createDocument,
   deleteDocument,
+  forwardDocument,
   getDocument,
   listDocuments,
   updateDocument,
@@ -16,3 +18,5 @@ documentRoutes.post("/", asyncHandler(createDocument));
 documentRoutes.get("/:id", asyncHandler(getDocument));
 documentRoutes.put("/:id", asyncHandler(updateDocument));
 documentRoutes.delete("/:id", asyncHandler(deleteDocument));
+documentRoutes.post("/:id/forward", asyncHandler(forwardDocument));
+documentRoutes.post("/:id/confirm", asyncHandler(confirmDocument));

@@ -3,6 +3,21 @@ import { api } from "./axios";
 export type DocType = "CHI_DAO" | "THONG_BAO" | "MOI_HOP" | "KHAC";
 export type DocStatus = "CHUA_XU_LY" | "DANG_XU_LY" | "DA_XU_LY";
 
+interface Person {
+  id: number;
+  username: string;
+  fullName: string | null;
+}
+
+export interface DocForward {
+  id: number;
+  fromUnit: { id: number; name: string };
+  toUnit: { id: number; name: string };
+  forwardedBy: Person;
+  note: string | null;
+  createdAt: string;
+}
+
 export interface IncomingDoc {
   id: number;
   number: string;
@@ -17,7 +32,12 @@ export interface IncomingDoc {
   note: string | null;
   unitId: number;
   unit: { id: number; name: string; level: string };
-  createdBy: { id: number; username: string; fullName: string | null };
+  createdBy: Person;
+  confirmedAt: string | null;
+  confirmedBy: Person | null;
+  resultNote: string | null;
+  forwards?: DocForward[];
+  _count?: { forwards: number };
   createdAt: string;
   updatedAt: string;
 }
@@ -63,3 +83,9 @@ export const updateDocument = (id: number, v: DocInput) =>
   api.put<{ message: string }>(`/documents/${id}`, v).then((r) => r.data);
 
 export const deleteDocument = (id: number) => api.delete<{ message: string }>(`/documents/${id}`).then((r) => r.data);
+
+export const forwardDocument = (id: number, toUnitId: string, note: string) =>
+  api.post<{ item: IncomingDoc; message: string }>(`/documents/${id}/forward`, { toUnitId, note }).then((r) => r.data);
+
+export const confirmDocument = (id: number, resultNote: string) =>
+  api.post<{ item: IncomingDoc; message: string }>(`/documents/${id}/confirm`, { resultNote }).then((r) => r.data);

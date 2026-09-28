@@ -2,15 +2,18 @@ import { useState, type FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { fetchUnits, parseApiError } from "../api/secretaries";
 import {
+  confirmDocument,
   createDocument,
   deleteDocument,
   fetchDocuments,
+  forwardDocument,
   updateDocument,
   type DocInput,
   type IncomingDoc,
 } from "../api/documents";
 import ConfirmDialog from "../components/ConfirmDialog";
 import { useToast } from "../components/Toast";
+import { useAuth } from "../hooks/useAuth";
 import { DOC_STATUS_LABEL, DOC_TYPE_LABEL, formatDate, toDateInput } from "../lib/constants";
 
 const PAGE_SIZE = 10;
@@ -165,13 +168,138 @@ function FormModal({ doc, onClose, onDone }: { doc?: IncomingDoc; onClose: () =>
   );
 }
 
+function ForwardModal({ doc, onClose, onDone }: { doc: IncomingDoc; onClose: () => void; onDone: () => void }) {
+  const toast = useToast();
+  const [toUnitId, setToUnitId] = useState("");
+  const [note, setNote] = useState("");
+  const [error, setError] = useState("");
+  const units = useQuery({ queryKey: ["units"], queryFn: () => fetchUnits() });
+  // fetchUnits() đã lọc theo đúng phạm vi địa bàn của người dùng ở server rồi
+  const unitOptions = (units.data ?? []).filter((u) => u.id !== doc.unitId);
+
+  const forward = useMutation({
+    mutationFn: () => forwardDocument(doc.id, toUnitId, note),
+    onSuccess: (r) => {
+      toast("success", r.message);
+      onDone();
+    },
+    onError: (err) => {
+      const e = parseApiError(err);
+      setError(e.fields.toUnitId || e.message);
+    },
+  });
+
+  return (
+    <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4" role="dialog" aria-modal="true">
+      <div className="w-full max-w-sm rounded bg-white p-5 shadow-xl sm:p-6">
+        <h2 className="mb-1 text-lg text-slate-800">Chuyển tiếp công văn</h2>
+        <p className="mb-4 text-sm text-slate-500">
+          {doc.number} — đang ở <b>{doc.unit.name}</b>
+        </p>
+        <form
+          onSubmit={(e: FormEvent) => {
+            e.preventDefault();
+            setError("");
+            forward.mutate();
+          }}
+          noValidate
+          className="space-y-3"
+        >
+          <label className="block text-xs text-slate-500">
+            Chuyển đến đơn vị <span className="text-red-500">*</span>
+            <select className={field} value={toUnitId} onChange={(e) => setToUnitId(e.target.value)}>
+              <option value="">— Chọn đơn vị —</option>
+              {unitOptions.map((u) => (
+                <option key={u.id} value={u.id}>{u.name}</option>
+              ))}
+            </select>
+          </label>
+          <label className="block text-xs text-slate-500">
+            Ghi chú
+            <textarea className={field + " min-h-[50px]"} value={note} onChange={(e) => setNote(e.target.value)} />
+          </label>
+          <Err text={error} />
+          <div className="flex justify-end gap-3 pt-2">
+            <button type="button" onClick={onClose} disabled={forward.isPending} className="w-28 rounded-sm bg-[#a5a5a5] py-2 text-xs font-bold uppercase text-white hover:opacity-90">
+              Hủy
+            </button>
+            <button type="submit" disabled={forward.isPending || !toUnitId} className="w-28 rounded-sm bg-[#3d7ebf] py-2 text-xs font-bold uppercase text-white hover:opacity-90 disabled:opacity-60">
+              {forward.isPending ? "Đang gửi..." : "Chuyển"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function ConfirmDoneModal({ doc, onClose, onDone }: { doc: IncomingDoc; onClose: () => void; onDone: () => void }) {
+  const toast = useToast();
+  const [resultNote, setResultNote] = useState("");
+  const [error, setError] = useState("");
+
+  const confirm = useMutation({
+    mutationFn: () => confirmDocument(doc.id, resultNote),
+    onSuccess: (r) => {
+      toast("success", r.message);
+      onDone();
+    },
+    onError: (err) => setError(parseApiError(err).message),
+  });
+
+  return (
+    <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4" role="dialog" aria-modal="true">
+      <div className="w-full max-w-sm rounded bg-white p-5 shadow-xl sm:p-6">
+        <h2 className="mb-1 text-lg text-slate-800">Xác nhận đã thực hiện</h2>
+        <p className="mb-4 text-sm text-slate-500">
+          {doc.number} — {doc.unit.name}. Sau khi xác nhận sẽ không sửa hay chuyển tiếp được nữa.
+        </p>
+        <form
+          onSubmit={(e: FormEvent) => {
+            e.preventDefault();
+            setError("");
+            confirm.mutate();
+          }}
+          noValidate
+          className="space-y-3"
+        >
+          <label className="block text-xs text-slate-500">
+            Kết quả thực hiện
+            <textarea
+              className={field + " min-h-[70px]"}
+              placeholder="Ví dụ: đã tổ chức 2 buổi sinh hoạt, 40 đoàn viên tham gia..."
+              value={resultNote}
+              onChange={(e) => setResultNote(e.target.value)}
+            />
+          </label>
+          <Err text={error} />
+          <div className="flex justify-end gap-3 pt-2">
+            <button type="button" onClick={onClose} disabled={confirm.isPending} className="w-28 rounded-sm bg-[#a5a5a5] py-2 text-xs font-bold uppercase text-white hover:opacity-90">
+              Hủy
+            </button>
+            <button type="submit" disabled={confirm.isPending} className="w-28 rounded-sm bg-[#1b7a3a] py-2 text-xs font-bold uppercase text-white hover:opacity-90 disabled:opacity-60">
+              {confirm.isPending ? "Đang lưu..." : "Xác nhận"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 export default function Documents() {
   const toast = useToast();
   const qc = useQueryClient();
+  const { user } = useAuth();
   const [draft, setDraft] = useState({ number: "", status: "", type: "" });
   const [applied, setApplied] = useState({ number: "", status: "", type: "", page: 1 });
   const [modal, setModal] = useState<{ doc?: IncomingDoc } | null>(null);
   const [toDelete, setToDelete] = useState<IncomingDoc | null>(null);
+  const [toForward, setToForward] = useState<IncomingDoc | null>(null);
+  const [toConfirm, setToConfirm] = useState<IncomingDoc | null>(null);
+
+  // Đúng quy tắc phía server: chỉ đơn vị đang phụ trách mới xác nhận được; ADMIN xác nhận được mọi nơi.
+  const canConfirm = (d: IncomingDoc) => user?.role === "ADMIN" || user?.unit?.id === d.unitId;
 
   const list = useQuery({
     queryKey: ["documents", applied],
@@ -266,7 +394,10 @@ export default function Documents() {
                 <dt className="text-slate-500">Loại</dt>
                 <dd>{DOC_TYPE_LABEL[d.type]}</dd>
                 <dt className="text-slate-500">Đơn vị</dt>
-                <dd>{d.unit.name}</dd>
+                <dd>
+                  {d.unit.name}
+                  {!!d._count?.forwards && <span className="ml-1 text-xs text-slate-400">(đã chuyển {d._count.forwards} lần)</span>}
+                </dd>
                 <dt className="text-slate-500">Ngày nhận</dt>
                 <dd>{formatDate(d.receivedDate)}</dd>
                 {d.deadline && (
@@ -276,14 +407,28 @@ export default function Documents() {
                   </>
                 )}
               </dl>
-              <div className="mt-3 flex gap-2">
-                <button onClick={() => setModal({ doc: d })} className="flex-1 rounded-sm bg-[#1e88e5] py-2 text-xs font-bold uppercase text-white hover:opacity-90">
-                  Sửa
-                </button>
-                <button onClick={() => setToDelete(d)} className="flex-1 rounded-sm bg-[#c0392b] py-2 text-xs font-bold uppercase text-white hover:opacity-90">
-                  Xóa
-                </button>
-              </div>
+              {d.confirmedAt ? (
+                <p className="mt-2 text-xs font-medium text-green-700">
+                  ✓ Đã xác nhận thực hiện — {formatDate(d.confirmedAt)} bởi {d.confirmedBy?.fullName ?? d.confirmedBy?.username}
+                </p>
+              ) : (
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <button onClick={() => setModal({ doc: d })} className="flex-1 rounded-sm bg-[#1e88e5] py-2 text-xs font-bold uppercase text-white hover:opacity-90">
+                    Sửa
+                  </button>
+                  <button onClick={() => setToForward(d)} className="flex-1 rounded-sm bg-[#8e44ad] py-2 text-xs font-bold uppercase text-white hover:opacity-90">
+                    Chuyển tiếp
+                  </button>
+                  {canConfirm(d) && (
+                    <button onClick={() => setToConfirm(d)} className="flex-1 rounded-sm bg-[#1b7a3a] py-2 text-xs font-bold uppercase text-white hover:opacity-90">
+                      Xác nhận
+                    </button>
+                  )}
+                  <button onClick={() => setToDelete(d)} className="flex-1 rounded-sm bg-[#c0392b] py-2 text-xs font-bold uppercase text-white hover:opacity-90">
+                    Xóa
+                  </button>
+                </div>
+              )}
             </div>
           ))}
           {!list.isFetching && items.length === 0 && (
@@ -303,7 +448,7 @@ export default function Documents() {
               <th className={HEAD}>Ngày nhận</th>
               <th className={HEAD}>Hạn xử lý</th>
               <th className={HEAD}>Trạng thái</th>
-              <th className={HEAD + " w-40"}>Thao tác</th>
+              <th className={HEAD + " w-56"}>Thao tác</th>
             </tr>
           </thead>
           <tbody>
@@ -314,21 +459,39 @@ export default function Documents() {
                 <td className={CELL + " max-w-[280px]"}>{d.summary}</td>
                 <td className={CELL + " text-center"}>{d.sender}</td>
                 <td className={CELL + " text-center"}>{DOC_TYPE_LABEL[d.type]}</td>
-                <td className={CELL + " text-center"}>{d.unit.name}</td>
+                <td className={CELL + " text-center"}>
+                  {d.unit.name}
+                  {!!d._count?.forwards && <div className="text-xs text-slate-400">(đã chuyển {d._count.forwards} lần)</div>}
+                </td>
                 <td className={CELL + " text-center"}>{formatDate(d.receivedDate)}</td>
                 <td className={CELL + " text-center"}>{d.deadline ? formatDate(d.deadline) : "—"}</td>
                 <td className={CELL + " text-center"}>
                   <span className={STATUS_COLOR[d.status]}>{DOC_STATUS_LABEL[d.status]}</span>
+                  {d.confirmedAt && <div className="mt-0.5 text-xs text-green-700">✓ Đã xác nhận</div>}
                 </td>
                 <td className={CELL}>
-                  <div className="flex justify-center gap-2">
-                    <button onClick={() => setModal({ doc: d })} className="rounded-sm bg-[#1e88e5] px-3 py-1.5 text-xs font-bold uppercase text-white hover:opacity-90">
-                      Sửa
-                    </button>
-                    <button onClick={() => setToDelete(d)} className="rounded-sm bg-[#c0392b] px-3 py-1.5 text-xs font-bold uppercase text-white hover:opacity-90">
-                      Xóa
-                    </button>
-                  </div>
+                  {d.confirmedAt ? (
+                    <div className="text-center text-xs text-slate-400" title={d.resultNote ?? undefined}>
+                      {formatDate(d.confirmedAt)}<br />{d.confirmedBy?.fullName ?? d.confirmedBy?.username}
+                    </div>
+                  ) : (
+                    <div className="flex flex-wrap justify-center gap-1.5">
+                      <button onClick={() => setModal({ doc: d })} className="rounded-sm bg-[#1e88e5] px-2.5 py-1.5 text-xs font-bold uppercase text-white hover:opacity-90">
+                        Sửa
+                      </button>
+                      <button onClick={() => setToForward(d)} className="rounded-sm bg-[#8e44ad] px-2.5 py-1.5 text-xs font-bold uppercase text-white hover:opacity-90">
+                        Chuyển
+                      </button>
+                      {canConfirm(d) && (
+                        <button onClick={() => setToConfirm(d)} className="rounded-sm bg-[#1b7a3a] px-2.5 py-1.5 text-xs font-bold uppercase text-white hover:opacity-90">
+                          Xác nhận
+                        </button>
+                      )}
+                      <button onClick={() => setToDelete(d)} className="rounded-sm bg-[#c0392b] px-2.5 py-1.5 text-xs font-bold uppercase text-white hover:opacity-90">
+                        Xóa
+                      </button>
+                    </div>
+                  )}
                 </td>
               </tr>
             ))}
@@ -371,6 +534,28 @@ export default function Documents() {
           <p className="font-medium text-slate-800">{toDelete.number}</p>
           <p>{toDelete.summary}</p>
         </ConfirmDialog>
+      )}
+
+      {toForward && (
+        <ForwardModal
+          doc={toForward}
+          onClose={() => setToForward(null)}
+          onDone={() => {
+            setToForward(null);
+            refresh();
+          }}
+        />
+      )}
+
+      {toConfirm && (
+        <ConfirmDoneModal
+          doc={toConfirm}
+          onClose={() => setToConfirm(null)}
+          onDone={() => {
+            setToConfirm(null);
+            refresh();
+          }}
+        />
       )}
     </div>
   );

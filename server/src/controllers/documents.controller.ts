@@ -73,6 +73,20 @@ const toData = (v: z.infer<typeof docSchema>) => ({
 const listInclude = {
   unit: { select: { id: true, name: true, level: true } },
   createdBy: { select: { id: true, username: true, fullName: true } },
+  confirmedBy: { select: { id: true, username: true, fullName: true } },
+  _count: { select: { forwards: true } },
+} satisfies Prisma.IncomingDocumentInclude;
+
+const detailInclude = {
+  ...listInclude,
+  forwards: {
+    orderBy: { createdAt: "asc" },
+    include: {
+      fromUnit: { select: { id: true, name: true } },
+      toUnit: { select: { id: true, name: true } },
+      forwardedBy: { select: { id: true, username: true, fullName: true } },
+    },
+  },
 } satisfies Prisma.IncomingDocumentInclude;
 
 const listQuery = z.object({
@@ -131,7 +145,7 @@ export async function getDocument(req: Request, res: Response) {
   const scope = await scopeOf(req);
   const item = await prisma.incomingDocument.findFirst({
     where: { id, deletedAt: null, ...(scope ? { unitId: { in: scope } } : {}) },
-    include: listInclude,
+    include: detailInclude,
   });
   if (!item) return res.status(404).json({ message: "Không tìm thấy công văn" });
 
@@ -171,6 +185,9 @@ export async function updateDocument(req: Request, res: Response) {
     where: { id, deletedAt: null, ...(scope ? { unitId: { in: scope } } : {}) },
   });
   if (!current) return res.status(404).json({ message: "Không tìm thấy công văn" });
+  if (current.confirmedAt) {
+    return res.status(409).json({ message: "Công văn đã được xác nhận thực hiện, không thể sửa" });
+  }
   if (!inScope(scope, v.unitId)) {
     return res.status(403).json({ message: OUT_OF_SCOPE, errors: { unitId: OUT_OF_SCOPE } });
   }
@@ -193,4 +210,80 @@ export async function deleteDocument(req: Request, res: Response) {
   await prisma.incomingDocument.update({ where: { id }, data: { deletedAt: new Date() } });
   await audit(req, "DELETE", "IncomingDocument", id, { number: current.number });
   res.json({ message: "Xóa công văn thành công" });
+}
+
+const forwardSchema = z.object({
+  toUnitId: z.coerce.number({ invalid_type_error: "Vui lòng chọn đơn vị nhận" }).int().positive("Vui lòng chọn đơn vị nhận"),
+  note: optText,
+});
+
+/**
+ * Chuyển tiếp: đổi đơn vị phụ trách sang đơn vị con trong phạm vi của người chuyển,
+ * đồng thời lưu 1 dòng lịch sử (DocumentForward) — không tạo bản ghi công văn mới.
+ */
+export async function forwardDocument(req: Request, res: Response) {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id)) return res.status(400).json({ message: "Mã không hợp lệ" });
+
+  const parsed = forwardSchema.safeParse(req.body);
+  if (!parsed.success) return sendValidationError(res, parsed.error);
+  const v = parsed.data;
+
+  const scope = await scopeOf(req);
+  const current = await prisma.incomingDocument.findFirst({
+    where: { id, deletedAt: null, ...(scope ? { unitId: { in: scope } } : {}) },
+  });
+  if (!current) return res.status(404).json({ message: "Không tìm thấy công văn" });
+  if (current.confirmedAt) {
+    return res.status(409).json({ message: "Công văn đã được xác nhận thực hiện, không thể chuyển tiếp" });
+  }
+  if (v.toUnitId === current.unitId) {
+    return res.status(400).json({ message: "Đơn vị nhận trùng với đơn vị đang phụ trách", errors: { toUnitId: "Đơn vị nhận trùng với đơn vị đang phụ trách" } });
+  }
+  const toUnit = await prisma.unit.findUnique({ where: { id: v.toUnitId } });
+  if (!toUnit) return res.status(400).json({ message: "Đơn vị không tồn tại", errors: { toUnitId: "Đơn vị không tồn tại" } });
+  if (!inScope(scope, v.toUnitId)) {
+    return res.status(403).json({ message: OUT_OF_SCOPE, errors: { toUnitId: OUT_OF_SCOPE } });
+  }
+
+  const item = await prisma.$transaction(async (tx) => {
+    await tx.documentForward.create({
+      data: { documentId: id, fromUnitId: current.unitId, toUnitId: v.toUnitId, forwardedById: req.auth!.sub, note: v.note },
+    });
+    return tx.incomingDocument.update({ where: { id }, data: { unitId: v.toUnitId }, include: detailInclude });
+  });
+
+  await audit(req, "UPDATE", "IncomingDocument", id, { forward: true, fromUnitId: current.unitId, toUnitId: v.toUnitId });
+  res.json({ item, message: `Đã chuyển tiếp công văn sang ${toUnit.name}` });
+}
+
+const confirmSchema = z.object({ resultNote: optText });
+
+/** Xác nhận đã thực hiện: chỉ đơn vị đang phụ trách (unitId hiện tại) mới xác nhận được; ADMIN xác nhận được mọi nơi. */
+export async function confirmDocument(req: Request, res: Response) {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id)) return res.status(400).json({ message: "Mã không hợp lệ" });
+
+  const parsed = confirmSchema.safeParse(req.body);
+  if (!parsed.success) return sendValidationError(res, parsed.error);
+
+  const scope = await scopeOf(req);
+  const current = await prisma.incomingDocument.findFirst({
+    where: { id, deletedAt: null, ...(scope ? { unitId: { in: scope } } : {}) },
+  });
+  if (!current) return res.status(404).json({ message: "Không tìm thấy công văn" });
+  if (req.auth!.role !== "ADMIN" && current.unitId !== req.auth!.unitId) {
+    return res.status(403).json({ message: "Chỉ đơn vị đang phụ trách công văn này mới xác nhận được" });
+  }
+  if (current.confirmedAt) {
+    return res.status(409).json({ message: "Công văn này đã được xác nhận trước đó" });
+  }
+
+  const item = await prisma.incomingDocument.update({
+    where: { id },
+    data: { status: "DA_XU_LY", confirmedAt: new Date(), confirmedById: req.auth!.sub, resultNote: parsed.data.resultNote },
+    include: detailInclude,
+  });
+  await audit(req, "UPDATE", "IncomingDocument", id, { confirm: true });
+  res.json({ item, message: "Đã xác nhận thực hiện công văn" });
 }
