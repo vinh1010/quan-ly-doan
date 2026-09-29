@@ -14,8 +14,9 @@ async function main() {
   const username = process.env.SEED_USERNAME ?? "Doanxaphucat.hni";
   const password = process.env.SEED_PASSWORD ?? "Abc@123";
 
-  const huyen = await ensureUnit("Huyện đoàn Phúc Thọ", "HUYEN");
-  const xa = await ensureUnit("Đoàn xã Phúc Cát", "XA_PHUONG", huyen.id);
+  // Địa bàn quản lý cố định ở cấp Xã/Thôn: Xã Phú Cát là cấp cao nhất, không có Huyện phía trên
+  // (xem migration 20260929001212_fix_org_xa_phu_cat để biết cách dữ liệu cũ được chuyển sang).
+  const xa = await ensureUnit("Xã Phú Cát", "XA_PHUONG");
 
   await prisma.user.upsert({
     where: { username },
@@ -54,10 +55,15 @@ async function main() {
     return;
   }
 
-  // Đơn vị cơ sở + Bí thư mẫu (để có dữ liệu thử danh sách / tìm kiếm / xóa)
-  const cs1 = await ensureUnit("Đoàn cơ sở Thôn Phúc Hạ", "CO_SO", xa.id, 86);
-  const cs2 = await ensureUnit("Đoàn cơ sở Thôn Phúc Thượng", "CO_SO", xa.id, 64);
-  const cs3 = await ensureUnit("Đoàn cơ sở Trường THCS Phúc Cát", "CO_SO", xa.id, 42);
+  // 13 thôn thật thuộc Xã Phú Cát (đơn vị cơ sở cố định theo địa bàn thực tế quản lý)
+  const thonNames = [
+    "Bạch Thạch", "Đông Hạ", "Đông Thượng", "Giã Cát", "Hòa Phú", "Hòa Trúc", "Long Phú",
+    "Phú Mãn", "Phú Sơn", "Phú Thịnh", "Thắng Đầu", "Việt Yên", "Yên Thái",
+  ];
+  const thon = await Promise.all(thonNames.map((t) => ensureUnit(`Đoàn cơ sở Thôn ${t}`, "CO_SO", xa.id)));
+
+  // Bí thư mẫu (để có dữ liệu thử danh sách / tìm kiếm / xóa) — gán vào 2 thôn đầu tiên
+  const [cs1, cs2] = thon;
 
   const samples = [
     {
@@ -77,8 +83,8 @@ async function main() {
     },
     {
       // đã kết thúc nhiệm kỳ: dùng để thử chức năng xóa
-      username: "bithu.thcs.cu", fullName: "Phạm Minh Đức", dob: "1993-05-30", gender: "MALE" as const,
-      phone: "0934555666", cccd: "001093000321", unitId: cs3.id, position: "BI_THU" as const,
+      username: "bithu.docat.cu", fullName: "Phạm Minh Đức", dob: "1993-05-30", gender: "MALE" as const,
+      phone: "0934555666", cccd: "001093000321", unitId: thon[2].id, position: "BI_THU" as const,
       termStart: "2019-01-01", termEnd: "2023-12-31", termLabel: "2019 - 2023", status: "ENDED" as const,
     },
   ];
@@ -86,10 +92,10 @@ async function main() {
   const passwordHash = await bcrypt.hash("Abc123", 10);
   for (const s of samples) {
     const extra = {
-      hometownProvince: "Thành phố Hà Nội", hometownWard: "Xã Phúc Cát",
-      residenceProvince: "Thành phố Hà Nội", residenceWard: "Xã Phúc Cát",
+      hometownProvince: "Thành phố Hà Nội", hometownWard: "Xã Phú Cát",
+      residenceProvince: "Thành phố Hà Nội", residenceWard: "Xã Phú Cát",
       training: "Cử nhân", politicalTheory: "Trung cấp", education: "Hệ 12/12",
-      unionJoinDate: new Date("2010-03-26"), unionJoinPlace: "Xã Phúc Cát", cardIssuePlace: "Huyện đoàn Phúc Thọ",
+      unionJoinDate: new Date("2010-03-26"), unionJoinPlace: "Xã Phú Cát", cardIssuePlace: "Xã Phú Cát",
       partyJoinDate: s.position === "BI_THU" ? new Date("2018-05-19") : null,
       partyPosition: s.position === "BI_THU" ? "Đảng viên" : null,
       occupation: "Cán bộ Đoàn", email: `${s.username.replace(/\./g, "")}@example.com`,
@@ -110,7 +116,7 @@ async function main() {
         userId: user.id, unitId: s.unitId, fullName: s.fullName, dob: new Date(s.dob), gender: s.gender,
         phone: s.phone, cccd: s.cccd, position: s.position, termStart: new Date(s.termStart),
         termEnd: new Date(s.termEnd), termLabel: s.termLabel, status: s.status,
-        ethnicity: "Kinh", address: "Xã Phúc Cát, Huyện Phúc Thọ, Hà Nội", ...extra,
+        ethnicity: "Kinh", address: "Xã Phú Cát, Hà Nội", ...extra,
       },
     });
   }
