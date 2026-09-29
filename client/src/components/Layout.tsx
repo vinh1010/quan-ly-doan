@@ -136,8 +136,8 @@ export default function Layout() {
         </div>
       </header>
 
-      <nav className="overflow-x-auto border-b bg-white px-4">
-        <ul className="flex items-center">
+      <nav className="border-b bg-white px-4">
+        <ul className="flex flex-wrap items-center">
           {groups.map((g) => {
             const active = g.items.some(isItemActive);
             if (g.items.length === 1) {
