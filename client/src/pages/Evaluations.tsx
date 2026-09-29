@@ -31,6 +31,41 @@ function Err({ text }: { text?: string }) {
   return text ? <span className="mt-0.5 block text-xs text-red-600">{text}</span> : null;
 }
 
+/* ---------- Icon gọn cho các nút thao tác (cùng kiểu với IconButton ở Ban chấp hành đoàn cơ sở) ---------- */
+function IconBtn({
+  label,
+  color,
+  onClick,
+  disabled,
+  children,
+}: {
+  label: string;
+  color: string;
+  onClick: () => void;
+  disabled?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      aria-label={label}
+      title={label}
+      className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${color} text-white hover:opacity-90 disabled:opacity-50`}
+    >
+      {children}
+    </button>
+  );
+}
+
+const ICON_PROPS = { width: 15, height: 15, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 2, "aria-hidden": true } as const;
+const GradeIcon = <svg {...ICON_PROPS}><path d="M9 6h11M9 12h11M9 18h11M3 6l1 1 2-2M3 12l1 1 2-2M3 18l1 1 2-2" /></svg>;
+const PencilIcon = <svg {...ICON_PROPS}><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" /></svg>;
+const ForwardIcon = <svg {...ICON_PROPS}><path d="M12 19V5M5 12l7-7 7 7" /></svg>;
+const ApproveIcon = <svg {...ICON_PROPS}><path d="M20 6 9 17l-5-5" /></svg>;
+const TrashIcon = <svg {...ICON_PROPS}><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14M10 11v6M14 11v6" /></svg>;
+const ReopenIcon = <svg {...ICON_PROPS}><path d="M3 2v6h6M3.51 8a9 9 0 1 1 2.13 6.36" /></svg>;
+
 /* ---------- Thêm mới / sửa thông tin đợt (năm, ghi chú) ---------- */
 function FormModal({ item, onClose, onDone }: { item?: MemberEvaluation; onClose: () => void; onDone: () => void }) {
   const toast = useToast();
@@ -279,16 +314,16 @@ function evalActions(
   h: { grade: () => void; edit: () => void; forward: () => void; del: () => void; approve: () => void; reopen: () => void },
 ) {
   if (d.status === "DA_DUYET") {
-    return [{ key: "reopen", label: "Mở lại", color: "bg-amber-600", onClick: h.reopen }];
+    return [{ key: "reopen", label: "Mở lại", color: "bg-amber-600", icon: ReopenIcon, onClick: h.reopen }];
   }
   const isTop = d.unit.parentId === null;
   return [
-    { key: "grade", label: "Chấm điểm", color: "bg-[#1b7a3a]", onClick: h.grade },
-    { key: "edit", label: "Sửa", color: "bg-[#1e88e5]", onClick: h.edit },
+    { key: "grade", label: "Chấm điểm", color: "bg-[#1b7a3a]", icon: GradeIcon, onClick: h.grade },
+    { key: "edit", label: "Sửa", color: "bg-[#1e88e5]", icon: PencilIcon, onClick: h.edit },
     isTop
-      ? { key: "approve", label: "Duyệt", color: "bg-[#16a34a]", onClick: h.approve }
-      : { key: "forward", label: "Chuyển lên", color: "bg-[#8e44ad]", onClick: h.forward },
-    { key: "delete", label: "Xóa", color: "bg-[#c0392b]", onClick: h.del },
+      ? { key: "approve", label: "Duyệt", color: "bg-[#16a34a]", icon: ApproveIcon, onClick: h.approve }
+      : { key: "forward", label: "Chuyển lên", color: "bg-[#8e44ad]", icon: ForwardIcon, onClick: h.forward },
+    { key: "delete", label: "Xóa", color: "bg-[#c0392b]", icon: TrashIcon, onClick: h.del },
   ];
 }
 
@@ -413,14 +448,9 @@ export default function Evaluations() {
                   approve: () => approve.mutate(d),
                   reopen: () => reopen.mutate(d),
                 }).map((b) => (
-                  <button
-                    key={b.key}
-                    onClick={b.onClick}
-                    disabled={approve.isPending || reopen.isPending}
-                    className={`flex-1 rounded-sm ${b.color} py-2 text-xs font-bold uppercase text-white hover:opacity-90 disabled:opacity-60`}
-                  >
-                    {b.label}
-                  </button>
+                  <IconBtn key={b.key} label={b.label} color={b.color} onClick={b.onClick} disabled={approve.isPending || reopen.isPending}>
+                    {b.icon}
+                  </IconBtn>
                 ))}
               </div>
             </div>
@@ -463,14 +493,9 @@ export default function Evaluations() {
                       approve: () => approve.mutate(d),
                       reopen: () => reopen.mutate(d),
                     }).map((b) => (
-                      <button
-                        key={b.key}
-                        onClick={b.onClick}
-                        disabled={approve.isPending || reopen.isPending}
-                        className={`rounded-sm ${b.color} px-2.5 py-1.5 text-xs font-bold uppercase text-white hover:opacity-90 disabled:opacity-60`}
-                      >
-                        {b.key === "forward" ? "Chuyển" : b.label}
-                      </button>
+                      <IconBtn key={b.key} label={b.label} color={b.color} onClick={b.onClick} disabled={approve.isPending || reopen.isPending}>
+                        {b.icon}
+                      </IconBtn>
                     ))}
                   </div>
                 </td>
