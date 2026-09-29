@@ -178,7 +178,7 @@ function StaffDashboard() {
       )}
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <Card title="Công văn cần chú ý">
+        <Card title="Công văn cần chú ý" className="min-w-0">
           {docsAttention.isLoading ? (
             <Empty text="Đang tải..." />
           ) : attentionList.length === 0 ? (
@@ -209,7 +209,7 @@ function StaffDashboard() {
           </Link>
         </Card>
 
-        <Card title={isAdmin ? "Hoạt động gần đây" : "Hoạt động của tôi gần đây"}>
+        <Card title={isAdmin ? "Hoạt động gần đây" : "Hoạt động của tôi gần đây"} className="min-w-0">
           {recentActivity.isLoading ? (
             <Empty text="Đang tải..." />
           ) : (recentActivity.data?.items.length ?? 0) === 0 ? (
