@@ -433,7 +433,9 @@ export default function Documents() {
               ) : (
                 <div className="mt-3 flex flex-wrap gap-2">
                   <IconBtn label="Sửa" color="bg-[#1e88e5]" onClick={() => setModal({ doc: d })}>{PencilIcon}</IconBtn>
-                  <IconBtn label="Chuyển tiếp" color="bg-[#8e44ad]" onClick={() => setToForward(d)}>{ForwardIcon}</IconBtn>
+                  {d.unit.parentId !== null && (
+                    <IconBtn label="Chuyển tiếp" color="bg-[#8e44ad]" onClick={() => setToForward(d)}>{ForwardIcon}</IconBtn>
+                  )}
                   {canConfirm(d) && (
                     <IconBtn label="Xác nhận" color="bg-[#1b7a3a]" onClick={() => setToConfirm(d)}>{ApproveIcon}</IconBtn>
                   )}
@@ -488,7 +490,9 @@ export default function Documents() {
                   ) : (
                     <div className="flex flex-wrap justify-center gap-1.5">
                       <IconBtn label="Sửa" color="bg-[#1e88e5]" onClick={() => setModal({ doc: d })}>{PencilIcon}</IconBtn>
-                      <IconBtn label="Chuyển tiếp" color="bg-[#8e44ad]" onClick={() => setToForward(d)}>{ForwardIcon}</IconBtn>
+                      {d.unit.parentId !== null && (
+                        <IconBtn label="Chuyển tiếp" color="bg-[#8e44ad]" onClick={() => setToForward(d)}>{ForwardIcon}</IconBtn>
+                      )}
                       {canConfirm(d) && (
                         <IconBtn label="Xác nhận" color="bg-[#1b7a3a]" onClick={() => setToConfirm(d)}>{ApproveIcon}</IconBtn>
                       )}

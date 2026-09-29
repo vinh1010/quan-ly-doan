@@ -31,7 +31,7 @@ export interface IncomingDoc {
   assignedTo: string | null;
   note: string | null;
   unitId: number;
-  unit: { id: number; name: string; level: string };
+  unit: { id: number; name: string; level: string; parentId: number | null };
   createdBy: Person;
   confirmedAt: string | null;
   confirmedBy: Person | null;

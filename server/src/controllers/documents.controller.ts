@@ -71,7 +71,7 @@ const toData = (v: z.infer<typeof docSchema>) => ({
 });
 
 const listInclude = {
-  unit: { select: { id: true, name: true, level: true } },
+  unit: { select: { id: true, name: true, level: true, parentId: true } },
   createdBy: { select: { id: true, username: true, fullName: true } },
   confirmedBy: { select: { id: true, username: true, fullName: true } },
   _count: { select: { forwards: true } },
