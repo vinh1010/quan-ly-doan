@@ -360,10 +360,11 @@ export async function getSecretary(req: Request, res: Response) {
   // ngoài phạm vi cũng trả 404 để không lộ việc bản ghi có tồn tại
   if (!item) return res.status(404).json({ message: "Không tìm thấy Bí thư" });
 
-  // số đoàn viên quản lý của đơn vị (dùng cho màn xem chi tiết)
-  const unit = await prisma.unit.findUnique({ where: { id: item.unitId }, select: { memberCount: true } });
+  // số đoàn viên quản lý của đơn vị (dùng cho màn xem chi tiết) — đếm từ bảng Đoàn viên thật,
+  // không dùng Unit.memberCount (trường đếm cũ, không nơi nào cập nhật nên luôn bằng 0)
+  const memberCount = await prisma.member.count({ where: { unitId: item.unitId, deletedAt: null } });
   await audit(req, "VIEW", "Secretary", id);
-  res.json({ item: { ...item, memberCount: unit?.memberCount ?? 0 } });
+  res.json({ item: { ...item, memberCount } });
 }
 
 export async function createSecretary(req: Request, res: Response) {
@@ -648,9 +649,9 @@ export async function getMySecretary(req: Request, res: Response) {
   const item = await findMySecretary(req);
   if (!item) return res.status(404).json({ message: "Không tìm thấy hồ sơ của bạn" });
 
-  const unit = await prisma.unit.findUnique({ where: { id: item.unitId }, select: { memberCount: true } });
+  const memberCount = await prisma.member.count({ where: { unitId: item.unitId, deletedAt: null } });
   await audit(req, "VIEW", "Secretary", item.id, { self: true });
-  res.json({ item: { ...item, memberCount: unit?.memberCount ?? 0 } });
+  res.json({ item: { ...item, memberCount } });
 }
 
 export async function exportMySecretaryPdf(req: Request, res: Response) {

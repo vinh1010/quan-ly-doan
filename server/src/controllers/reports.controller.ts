@@ -33,18 +33,21 @@ async function buildAreaReport(unitIds?: number[]): Promise<AreaRow[]> {
     orderBy: { name: "asc" },
   });
 
-  const [units, secretaries] = await Promise.all([
-    prisma.unit.findMany({ select: { id: true, parentId: true, memberCount: true } }),
+  const [units, secretaries, memberCounts] = await Promise.all([
+    prisma.unit.findMany({ select: { id: true, parentId: true } }),
     prisma.secretary.findMany({
       where: { deletedAt: null, status: "ACTIVE" },
       select: { unitId: true, position: true },
     }),
+    // đếm từ bảng Đoàn viên thật, không dùng Unit.memberCount (trường đếm cũ, không nơi nào
+    // cập nhật nên luôn bằng 0 — xem ghi chú tương tự ở secretaries.controller.ts)
+    prisma.member.groupBy({ by: ["unitId"], where: { deletedAt: null }, _count: { _all: true } }),
   ]);
   const children = new Map<number, number[]>();
   for (const u of units) {
     if (u.parentId != null) children.set(u.parentId, [...(children.get(u.parentId) ?? []), u.id]);
   }
-  const memberOf = new Map(units.map((u) => [u.id, u.memberCount]));
+  const memberOf = new Map(memberCounts.map((m) => [m.unitId, m._count._all]));
 
   return areas.map((a) => {
     const ids = new Set([a.id]);
