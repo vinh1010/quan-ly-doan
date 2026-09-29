@@ -195,33 +195,44 @@ export default function Layout() {
         </ul>
       </nav>
 
-      {/* Mobile: nút hamburger, bấm ra danh sách dọc theo từng nhóm */}
+      {/* Mobile: nút hamburger, bấm ra menu trượt đè lên giao diện (kiểu Render) */}
       <div className="border-b bg-white sm:hidden">
         <button
-          onClick={() => setMobileOpen((v) => !v)}
-          aria-expanded={mobileOpen}
-          className="flex w-full items-center justify-between px-4 py-3 text-[13px] uppercase text-[#1e88e5]"
+          onClick={() => setMobileOpen(true)}
+          className="flex items-center gap-2 px-4 py-3 text-[13px] uppercase text-[#1e88e5]"
         >
-          <span className="flex items-center gap-2">
-            <span className="text-base leading-none">☰</span> Menu
-          </span>
-          <span className="text-[9px]">{mobileOpen ? "▲" : "▼"}</span>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden className="shrink-0">
+            <path d="M3 6h18M3 12h18M3 18h18" />
+          </svg>
+          <span>Menu</span>
         </button>
-        {mobileOpen && (
-          <div className="border-t pb-2">
-            {groups.map((g) => (
-              <div key={g.key}>
-                <div className="px-4 pb-1 pt-3 text-[11px] font-bold uppercase tracking-wide text-slate-400">{g.label}</div>
-                {g.items.map((i) => (
-                  <NavLink key={i.to} to={i.to} end={i.end} className={subCls} onClick={() => setMobileOpen(false)}>
-                    {i.label}
-                  </NavLink>
-                ))}
-              </div>
-            ))}
-          </div>
-        )}
       </div>
+
+      {mobileOpen && (
+        <div className="fixed inset-0 z-40 sm:hidden">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setMobileOpen(false)} />
+          <div className="absolute left-0 top-0 h-full w-[82%] max-w-xs overflow-y-auto bg-white shadow-xl">
+            <div className="flex items-center justify-between border-b px-4 py-3">
+              <span className="text-[13px] font-bold uppercase text-[#1e88e5]">Menu</span>
+              <button onClick={() => setMobileOpen(false)} aria-label="Đóng" className="text-xl leading-none text-slate-500 hover:text-slate-800">
+                ×
+              </button>
+            </div>
+            <div className="pb-4">
+              {groups.map((g) => (
+                <div key={g.key}>
+                  <div className="px-4 pb-1 pt-3 text-[11px] font-bold uppercase tracking-wide text-slate-400">{g.label}</div>
+                  {g.items.map((i) => (
+                    <NavLink key={i.to} to={i.to} end={i.end} className={subCls} onClick={() => setMobileOpen(false)}>
+                      {i.label}
+                    </NavLink>
+                  ))}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="px-4 py-3 text-[13px] uppercase text-slate-700">
         {(currentGroup?.label ?? "").toUpperCase()} <span className="mx-1">/</span> {(currentItem?.label ?? "").toUpperCase()}
