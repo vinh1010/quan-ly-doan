@@ -298,14 +298,6 @@ export default function SecretaryList() {
                     {s.fullName}
                   </button>
                 </div>
-                <span className="inline-flex shrink-0 gap-1.5">
-                  <IconButton label={`Sửa ${s.fullName}`} onClick={() => setModal({ mode: "edit", id: s.id })}>
-                    {PencilIcon}
-                  </IconButton>
-                  <IconButton label={`Xóa ${s.fullName}`} color="bg-[#c0392b]" onClick={() => setToDelete(s)}>
-                    {TrashIcon}
-                  </IconButton>
-                </span>
               </div>
               <dl className="mt-2 grid grid-cols-[88px_1fr] gap-x-2 gap-y-1 text-[13px]">
                 <dt className="text-slate-500">Chức vụ</dt>
@@ -326,6 +318,14 @@ export default function SecretaryList() {
                   </>
                 )}
               </dl>
+              <div className="mt-3 flex gap-2">
+                <IconButton label={`Sửa ${s.fullName}`} onClick={() => setModal({ mode: "edit", id: s.id })}>
+                  {PencilIcon}
+                </IconButton>
+                <IconButton label={`Xóa ${s.fullName}`} color="bg-[#c0392b]" onClick={() => setToDelete(s)}>
+                  {TrashIcon}
+                </IconButton>
+              </div>
             </div>
           ))}
           {!list.isFetching && items.length === 0 && (
