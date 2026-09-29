@@ -83,6 +83,7 @@ export default function Layout() {
   const [openGroup, setOpenGroup] = useState<string | null>(null);
   const [subPos, setSubPos] = useState<{ left: number; top: number } | null>(null);
   const btnRefs = useRef<Record<string, HTMLButtonElement | null>>({});
+  const [mobileOpen, setMobileOpen] = useState(false);
   const [pwOpen, setPwOpen] = useState(false);
 
   // Thanh menu cuộn ngang được (overflow-x-auto) nên khung menu con phải định vị kiểu "fixed" theo
@@ -150,7 +151,8 @@ export default function Layout() {
         </div>
       </header>
 
-      <nav className="overflow-x-auto border-b bg-white px-4">
+      {/* Web/PC: thanh ngang 1 hàng, cuộn được khi tràn */}
+      <nav className="hidden overflow-x-auto border-b bg-white px-4 sm:block">
         <ul className="flex flex-nowrap items-center">
           {groups.map((g) => {
             const active = g.items.some(isItemActive);
@@ -192,6 +194,34 @@ export default function Layout() {
           })}
         </ul>
       </nav>
+
+      {/* Mobile: nút hamburger, bấm ra danh sách dọc theo từng nhóm */}
+      <div className="border-b bg-white sm:hidden">
+        <button
+          onClick={() => setMobileOpen((v) => !v)}
+          aria-expanded={mobileOpen}
+          className="flex w-full items-center justify-between px-4 py-3 text-[13px] uppercase text-[#1e88e5]"
+        >
+          <span className="flex items-center gap-2">
+            <span className="text-base leading-none">☰</span> Menu
+          </span>
+          <span className="text-[9px]">{mobileOpen ? "▲" : "▼"}</span>
+        </button>
+        {mobileOpen && (
+          <div className="border-t pb-2">
+            {groups.map((g) => (
+              <div key={g.key}>
+                <div className="px-4 pb-1 pt-3 text-[11px] font-bold uppercase tracking-wide text-slate-400">{g.label}</div>
+                {g.items.map((i) => (
+                  <NavLink key={i.to} to={i.to} end={i.end} className={subCls} onClick={() => setMobileOpen(false)}>
+                    {i.label}
+                  </NavLink>
+                ))}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
 
       <div className="px-4 py-3 text-[13px] uppercase text-slate-700">
         {(currentGroup?.label ?? "").toUpperCase()} <span className="mx-1">/</span> {(currentItem?.label ?? "").toUpperCase()}
