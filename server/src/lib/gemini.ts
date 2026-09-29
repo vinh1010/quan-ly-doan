@@ -2,7 +2,9 @@
 // không thêm SDK ngoài — chỉ cần 1 lệnh gọi REST đơn giản, đủ cho tính năng hỗ trợ soạn thảo.
 // Lấy API key miễn phí tại https://aistudio.google.com/apikey, đặt vào GEMINI_API_KEY trong .env.
 
-const DEFAULT_MODEL = "gemini-2.5-flash";
+// gemini-2.5-flash đã ngừng cấp cho tài khoản mới (Google trả lỗi 404, gợi ý model mới hơn).
+// Dùng gemini-3.5-flash-lite: rẻ nhất trong dòng Flash hiện tại, đủ dùng cho tác vụ soạn văn bản.
+const DEFAULT_MODEL = "gemini-3.5-flash-lite";
 
 export class GeminiConfigError extends Error {}
 export class GeminiApiError extends Error {}
