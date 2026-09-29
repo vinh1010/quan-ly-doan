@@ -44,9 +44,11 @@ export default function Layout() {
             Hệ thống nghiệp vụ công tác
             <br />
             Đoàn TNCS Hồ Chí Minh
+            <br />
+            Xã Phú Cát
           </div>
           <div className="text-xs font-bold uppercase leading-tight tracking-wide sm:hidden">
-            Công tác Đoàn
+            Công tác Đoàn Xã Phú Cát
             <br />
             TNCS Hồ Chí Minh
           </div>
