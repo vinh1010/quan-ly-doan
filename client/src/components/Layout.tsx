@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 import ChangePasswordModal from "./ChangePasswordModal";
@@ -81,7 +81,21 @@ export default function Layout() {
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const [openGroup, setOpenGroup] = useState<string | null>(null);
+  const [subPos, setSubPos] = useState<{ left: number; top: number } | null>(null);
+  const btnRefs = useRef<Record<string, HTMLButtonElement | null>>({});
   const [pwOpen, setPwOpen] = useState(false);
+
+  // Thanh menu cuộn ngang được (overflow-x-auto) nên khung menu con phải định vị kiểu "fixed" theo
+  // tọa độ tính tay từ nút bấm, thay vì "absolute" trong thanh — nếu không sẽ bị chính thanh menu
+  // cắt mất theo chiều dọc (quy tắc CSS: 1 trục overflow khác "visible" thì trục kia cũng bị cắt theo).
+  const openDropdown = (key: string) => {
+    const btn = btnRefs.current[key];
+    if (btn) {
+      const r = btn.getBoundingClientRect();
+      setSubPos({ left: r.left, top: r.bottom });
+    }
+    setOpenGroup(key);
+  };
 
   const handleLogout = async () => {
     await logout();
@@ -136,8 +150,8 @@ export default function Layout() {
         </div>
       </header>
 
-      <nav className="border-b bg-white px-4">
-        <ul className="flex flex-wrap items-center">
+      <nav className="overflow-x-auto border-b bg-white px-4">
+        <ul className="flex flex-nowrap items-center">
           {groups.map((g) => {
             const active = g.items.some(isItemActive);
             if (g.items.length === 1) {
@@ -151,17 +165,21 @@ export default function Layout() {
               );
             }
             return (
-              <li key={g.key} className="relative" onMouseLeave={() => setOpenGroup(null)}>
+              <li key={g.key} onMouseLeave={() => setOpenGroup(null)}>
                 <button
-                  onMouseEnter={() => setOpenGroup(g.key)}
-                  onClick={() => setOpenGroup((v) => (v === g.key ? null : g.key))}
+                  ref={(el) => { btnRefs.current[g.key] = el; }}
+                  onMouseEnter={() => openDropdown(g.key)}
+                  onClick={() => (openGroup === g.key ? setOpenGroup(null) : openDropdown(g.key))}
                   aria-expanded={openGroup === g.key}
                   className={topCls(active)}
                 >
                   {g.label} <span className="text-[9px]">▼</span>
                 </button>
-                {openGroup === g.key && (
-                  <div className="absolute left-0 top-full z-20 min-w-[260px] border bg-white shadow-lg">
+                {openGroup === g.key && subPos && (
+                  <div
+                    style={{ position: "fixed", left: subPos.left, top: subPos.top }}
+                    className="z-20 min-w-[260px] border bg-white shadow-lg"
+                  >
                     {g.items.map((i) => (
                       <NavLink key={i.to} to={i.to} end={i.end} className={subCls} onClick={() => setOpenGroup(null)}>
                         {i.label}
