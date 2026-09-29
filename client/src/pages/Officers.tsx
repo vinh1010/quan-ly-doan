@@ -264,24 +264,18 @@ export default function Officers() {
   const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const unitText = (o: Officer) => (o.unit ? `${o.unit.name} (${LEVEL_LABEL[o.unit.level] ?? o.unit.level})` : "Toàn hệ thống");
 
+  // Không thể tự đặt lại mật khẩu/khóa chính mình — ẩn hẳn 2 nút đó thay vì hiện mờ, thống nhất
+  // với cách xử lý ở các màn khác (ví dụ Đánh giá Đoàn viên: hành động không dùng được thì ẩn đi).
   const actions = (o: Officer) => {
-    const self = o.id === user?.id;
+    if (o.id === user?.id) {
+      return <span className="text-xs italic text-slate-400">Tài khoản của bạn</span>;
+    }
     return (
       <div className="flex justify-center gap-2">
-        <IconBtn
-          label="Đặt lại mật khẩu"
-          color="bg-[#3d7ebf]"
-          onClick={() => setResetting(o)}
-          disabled={self}
-        >
+        <IconBtn label="Đặt lại mật khẩu" color="bg-[#3d7ebf]" onClick={() => setResetting(o)}>
           {KeyIcon}
         </IconBtn>
-        <IconBtn
-          label={self ? "Không thể khóa chính mình" : o.status === "ACTIVE" ? "Khóa" : "Kích hoạt"}
-          color="bg-[#1e88e5]"
-          onClick={() => setTarget(o)}
-          disabled={self}
-        >
+        <IconBtn label={o.status === "ACTIVE" ? "Khóa" : "Kích hoạt"} color="bg-[#1e88e5]" onClick={() => setTarget(o)}>
           {o.status === "ACTIVE" ? LockIcon : UnlockIcon}
         </IconBtn>
       </div>

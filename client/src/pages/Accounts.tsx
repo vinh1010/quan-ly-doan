@@ -100,13 +100,16 @@ export default function Accounts() {
                 <dt className="text-slate-500">Đăng nhập cuối</dt>
                 <dd>{a.lastLoginAt ? formatDate(a.lastLoginAt) : "Chưa đăng nhập"}</dd>
               </dl>
-              <button
-                onClick={() => setTarget(a)}
-                disabled={a.status === "LOCKED" && !!a.secretary?.deletedAt}
-                className="mt-3 w-full rounded-sm bg-[#1e88e5] py-2 text-xs font-bold uppercase text-white hover:opacity-90 disabled:opacity-40"
-              >
-                {a.status === "ACTIVE" ? "Khóa tài khoản" : "Kích hoạt"}
-              </button>
+              {a.status === "LOCKED" && a.secretary?.deletedAt ? (
+                <p className="mt-3 text-center text-xs italic text-slate-400">Hồ sơ đã bị xóa, không thể kích hoạt lại</p>
+              ) : (
+                <button
+                  onClick={() => setTarget(a)}
+                  className="mt-3 w-full rounded-sm bg-[#1e88e5] py-2 text-xs font-bold uppercase text-white hover:opacity-90"
+                >
+                  {a.status === "ACTIVE" ? "Khóa tài khoản" : "Kích hoạt"}
+                </button>
+              )}
             </div>
           ))}
           {!list.isFetching && items.length === 0 && (
@@ -144,14 +147,16 @@ export default function Accounts() {
                   </span>
                 </td>
                 <td className={CELL + " text-center"}>
-                  <button
-                    onClick={() => setTarget(a)}
-                    disabled={a.status === "LOCKED" && !!a.secretary?.deletedAt}
-                    title={a.secretary?.deletedAt ? "Hồ sơ đã bị xóa" : undefined}
-                    className="rounded-sm bg-[#1e88e5] px-3 py-1.5 text-xs font-bold uppercase text-white hover:opacity-90 disabled:opacity-40"
-                  >
-                    {a.status === "ACTIVE" ? "Khóa" : "Kích hoạt"}
-                  </button>
+                  {a.status === "LOCKED" && a.secretary?.deletedAt ? (
+                    <span className="text-xs italic text-slate-400">Hồ sơ đã bị xóa</span>
+                  ) : (
+                    <button
+                      onClick={() => setTarget(a)}
+                      className="rounded-sm bg-[#1e88e5] px-3 py-1.5 text-xs font-bold uppercase text-white hover:opacity-90"
+                    >
+                      {a.status === "ACTIVE" ? "Khóa" : "Kích hoạt"}
+                    </button>
+                  )}
                 </td>
               </tr>
             ))}
