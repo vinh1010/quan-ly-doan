@@ -20,6 +20,15 @@ const CRUMBS: Record<string, string> = {
 const linkCls = ({ isActive }: { isActive: boolean }) =>
   `block px-4 py-2 text-[13px] uppercase hover:bg-slate-100 ${isActive ? "text-[#1e88e5]" : "text-slate-700"}`;
 
+/** Tiêu đề nhóm trong menu — không bấm được, chỉ để phân nhóm cho dễ rà theo mắt. */
+function GroupLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="mt-1 border-t px-4 pb-1 pt-2 text-[11px] font-bold uppercase tracking-wide text-slate-400 first:mt-0 first:border-t-0 first:pt-2">
+      {children}
+    </div>
+  );
+}
+
 export default function Layout() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
@@ -88,6 +97,7 @@ export default function Layout() {
             </button>
             {menuOpen && (
               <div className="absolute left-0 top-full z-20 min-w-[260px] border bg-white shadow-lg">
+                <GroupLabel>Tổng quan</GroupLabel>
                 <NavLink to="/" end className={linkCls} onClick={() => setMenuOpen(false)}>
                   Trang chủ
                 </NavLink>
@@ -96,23 +106,25 @@ export default function Layout() {
                     <NavLink to="/me" className={linkCls} onClick={() => setMenuOpen(false)}>
                       Hồ sơ của tôi
                     </NavLink>
+
+                    <GroupLabel>Công tác Đoàn viên</GroupLabel>
                     <NavLink to="/members" className={linkCls} onClick={() => setMenuOpen(false)}>
                       Danh sách Đoàn viên
                     </NavLink>
                     <NavLink to="/evaluations" className={linkCls} onClick={() => setMenuOpen(false)}>
                       Đánh giá, xếp loại Đoàn viên
                     </NavLink>
+
+                    <GroupLabel>Công cụ</GroupLabel>
                     <NavLink to="/ai-assistant" className={linkCls} onClick={() => setMenuOpen(false)}>
                       Trợ lý AI soạn thảo
                     </NavLink>
                   </>
                 ) : (
                   <>
+                    <GroupLabel>Công tác Đoàn viên</GroupLabel>
                     <NavLink to="/secretaries" className={linkCls} onClick={() => setMenuOpen(false)}>
                       Ban chấp hành đoàn cơ sở
-                    </NavLink>
-                    <NavLink to="/documents" className={linkCls} onClick={() => setMenuOpen(false)}>
-                      Nhận công văn
                     </NavLink>
                     <NavLink to="/members" className={linkCls} onClick={() => setMenuOpen(false)}>
                       Danh sách Đoàn viên
@@ -120,15 +132,26 @@ export default function Layout() {
                     <NavLink to="/evaluations" className={linkCls} onClick={() => setMenuOpen(false)}>
                       Đánh giá, xếp loại Đoàn viên
                     </NavLink>
+
+                    <GroupLabel>Văn bản</GroupLabel>
+                    <NavLink to="/documents" className={linkCls} onClick={() => setMenuOpen(false)}>
+                      Nhận công văn
+                    </NavLink>
+
+                    <GroupLabel>Công cụ</GroupLabel>
                     <NavLink to="/ai-assistant" className={linkCls} onClick={() => setMenuOpen(false)}>
                       Trợ lý AI soạn thảo
                     </NavLink>
+
+                    <GroupLabel>Quản trị</GroupLabel>
                     <NavLink to="/accounts" className={linkCls} onClick={() => setMenuOpen(false)}>
                       Quản lý tài khoản
                     </NavLink>
                     <NavLink to="/officers" className={linkCls} onClick={() => setMenuOpen(false)}>
                       Quản lý cán bộ cấp trên
                     </NavLink>
+
+                    <GroupLabel>Báo cáo</GroupLabel>
                     <NavLink to="/reports" className={linkCls} onClick={() => setMenuOpen(false)}>
                       Báo cáo – Thống kê
                     </NavLink>
