@@ -3,11 +3,13 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { fetchUnits, parseApiError } from "../api/secretaries";
 import { fetchMembers } from "../api/members";
 import {
+  approveEvaluation,
   createEvaluation,
   deleteEvaluation,
   fetchEvaluation,
   fetchEvaluations,
   forwardEvaluation,
+  reopenEvaluation,
   saveGrades,
   updateEvaluation,
   type GradeInput,
@@ -266,6 +268,39 @@ function ForwardModal({ item, onClose, onDone }: { item: MemberEvaluation; onClo
   );
 }
 
+/**
+ * Danh sách thao tác cho 1 đợt, tùy trạng thái:
+ * - Đã duyệt: chỉ còn "Mở lại" (khóa chấm điểm/sửa/chuyển/xóa).
+ * - Chưa duyệt, ở cấp cao nhất (không còn cấp trên): "Duyệt" thay cho "Chuyển lên".
+ * - Chưa duyệt, còn cấp trên: như cũ (Chấm điểm/Sửa/Chuyển lên/Xóa).
+ */
+function evalActions(
+  d: MemberEvaluation,
+  h: { grade: () => void; edit: () => void; forward: () => void; del: () => void; approve: () => void; reopen: () => void },
+) {
+  if (d.status === "DA_DUYET") {
+    return [{ key: "reopen", label: "Mở lại", color: "bg-amber-600", onClick: h.reopen }];
+  }
+  const isTop = d.unit.parentId === null;
+  return [
+    { key: "grade", label: "Chấm điểm", color: "bg-[#1b7a3a]", onClick: h.grade },
+    { key: "edit", label: "Sửa", color: "bg-[#1e88e5]", onClick: h.edit },
+    isTop
+      ? { key: "approve", label: "Duyệt", color: "bg-[#16a34a]", onClick: h.approve }
+      : { key: "forward", label: "Chuyển lên", color: "bg-[#8e44ad]", onClick: h.forward },
+    { key: "delete", label: "Xóa", color: "bg-[#c0392b]", onClick: h.del },
+  ];
+}
+
+function StatusBadge({ status }: { status: MemberEvaluation["status"] }) {
+  if (status !== "DA_DUYET") return null;
+  return (
+    <span className="ml-1.5 inline-block rounded bg-green-100 px-1.5 py-0.5 text-[10px] font-bold uppercase text-green-700">
+      Đã duyệt
+    </span>
+  );
+}
+
 export default function Evaluations() {
   const toast = useToast();
   const qc = useQueryClient();
@@ -294,6 +329,24 @@ export default function Evaluations() {
       toast("error", parseApiError(err).message);
       setToDelete(null);
     },
+  });
+
+  const approve = useMutation({
+    mutationFn: (d: MemberEvaluation) => approveEvaluation(d.id),
+    onSuccess: (r) => {
+      toast("success", r.message);
+      refresh();
+    },
+    onError: (err) => toast("error", parseApiError(err).message),
+  });
+
+  const reopen = useMutation({
+    mutationFn: (d: MemberEvaluation) => reopenEvaluation(d.id),
+    onSuccess: (r) => {
+      toast("success", r.message);
+      refresh();
+    },
+    onError: (err) => toast("error", parseApiError(err).message),
   });
 
   const items = list.data?.items ?? [];
@@ -340,7 +393,10 @@ export default function Evaluations() {
             <div key={d.id} className="rounded border border-slate-200 p-3">
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
-                  <div className="text-sm font-bold">Năm {d.year}</div>
+                  <div className="text-sm font-bold">
+                    Năm {d.year}
+                    <StatusBadge status={d.status} />
+                  </div>
                   <div className="text-[13px] text-slate-600">
                     {d.unit.name}
                     {!!d._count?.forwards && <span className="ml-1 text-xs text-slate-400">(đã chuyển {d._count.forwards} lần)</span>}
@@ -349,18 +405,23 @@ export default function Evaluations() {
                 <span className="shrink-0 text-xs font-medium text-slate-600">{d._count?.grades ?? 0} đã chấm</span>
               </div>
               <div className="mt-3 flex flex-wrap gap-2">
-                <button onClick={() => setGrading(d)} className="flex-1 rounded-sm bg-[#1b7a3a] py-2 text-xs font-bold uppercase text-white hover:opacity-90">
-                  Chấm điểm
-                </button>
-                <button onClick={() => setModal({ item: d })} className="flex-1 rounded-sm bg-[#1e88e5] py-2 text-xs font-bold uppercase text-white hover:opacity-90">
-                  Sửa
-                </button>
-                <button onClick={() => setToForward(d)} className="flex-1 rounded-sm bg-[#8e44ad] py-2 text-xs font-bold uppercase text-white hover:opacity-90">
-                  Chuyển lên
-                </button>
-                <button onClick={() => setToDelete(d)} className="flex-1 rounded-sm bg-[#c0392b] py-2 text-xs font-bold uppercase text-white hover:opacity-90">
-                  Xóa
-                </button>
+                {evalActions(d, {
+                  grade: () => setGrading(d),
+                  edit: () => setModal({ item: d }),
+                  forward: () => setToForward(d),
+                  del: () => setToDelete(d),
+                  approve: () => approve.mutate(d),
+                  reopen: () => reopen.mutate(d),
+                }).map((b) => (
+                  <button
+                    key={b.key}
+                    onClick={b.onClick}
+                    disabled={approve.isPending || reopen.isPending}
+                    className={`flex-1 rounded-sm ${b.color} py-2 text-xs font-bold uppercase text-white hover:opacity-90 disabled:opacity-60`}
+                  >
+                    {b.label}
+                  </button>
+                ))}
               </div>
             </div>
           ))}
@@ -383,7 +444,10 @@ export default function Evaluations() {
             {items.map((d, idx) => (
               <tr key={d.id} className="border-b hover:bg-slate-50">
                 <td className={CELL + " text-center"}>{(applied.page - 1) * PAGE_SIZE + idx + 1}</td>
-                <td className={CELL + " text-center"}>{d.year}</td>
+                <td className={CELL + " text-center"}>
+                  {d.year}
+                  <StatusBadge status={d.status} />
+                </td>
                 <td className={CELL}>
                   {d.unit.name}
                   {!!d._count?.forwards && <div className="text-xs text-slate-400">(đã chuyển {d._count.forwards} lần)</div>}
@@ -391,18 +455,23 @@ export default function Evaluations() {
                 <td className={CELL + " text-center font-medium"}>{d._count?.grades ?? 0}</td>
                 <td className={CELL}>
                   <div className="flex flex-wrap justify-center gap-1.5">
-                    <button onClick={() => setGrading(d)} className="rounded-sm bg-[#1b7a3a] px-2.5 py-1.5 text-xs font-bold uppercase text-white hover:opacity-90">
-                      Chấm điểm
-                    </button>
-                    <button onClick={() => setModal({ item: d })} className="rounded-sm bg-[#1e88e5] px-2.5 py-1.5 text-xs font-bold uppercase text-white hover:opacity-90">
-                      Sửa
-                    </button>
-                    <button onClick={() => setToForward(d)} className="rounded-sm bg-[#8e44ad] px-2.5 py-1.5 text-xs font-bold uppercase text-white hover:opacity-90">
-                      Chuyển
-                    </button>
-                    <button onClick={() => setToDelete(d)} className="rounded-sm bg-[#c0392b] px-2.5 py-1.5 text-xs font-bold uppercase text-white hover:opacity-90">
-                      Xóa
-                    </button>
+                    {evalActions(d, {
+                      grade: () => setGrading(d),
+                      edit: () => setModal({ item: d }),
+                      forward: () => setToForward(d),
+                      del: () => setToDelete(d),
+                      approve: () => approve.mutate(d),
+                      reopen: () => reopen.mutate(d),
+                    }).map((b) => (
+                      <button
+                        key={b.key}
+                        onClick={b.onClick}
+                        disabled={approve.isPending || reopen.isPending}
+                        className={`rounded-sm ${b.color} px-2.5 py-1.5 text-xs font-bold uppercase text-white hover:opacity-90 disabled:opacity-60`}
+                      >
+                        {b.key === "forward" ? "Chuyển" : b.label}
+                      </button>
+                    ))}
                   </div>
                 </td>
               </tr>
@@ -430,7 +499,8 @@ export default function Evaluations() {
         </div>
         <p className="mt-3 text-xs text-slate-500">
           Bí thư cấp thôn tạo đợt cho đơn vị mình, bấm "Chấm điểm" để xếp loại từng Đoàn viên (cần có sẵn trong mục "Đoàn viên"),
-          rồi bấm "Chuyển lên" để gửi cả đợt lên Bí thư Đoàn xã, sau đó xã chuyển tiếp lên cấp huyện.
+          rồi bấm "Chuyển lên" để gửi cả đợt lên Bí thư Đoàn xã. Khi đợt đã ở Xã Phú Cát (cấp cao nhất), bấm "Duyệt" để
+          chốt kết quả — sau khi duyệt sẽ khóa lại, cần "Mở lại" nếu cần chấm/sửa tiếp.
         </p>
       </div>
 

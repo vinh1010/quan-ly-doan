@@ -24,10 +24,13 @@ export interface MemberGradeEntry {
   member: { id: number; fullName: string; unitId: number };
 }
 
+export type EvalStatus = "DANG_THUC_HIEN" | "DA_DUYET";
+
 export interface MemberEvaluation {
   id: number;
   year: number;
   note: string | null;
+  status: EvalStatus;
   unitId: number;
   unit: { id: number; name: string; level: string; parentId: number | null };
   createdBy: Person;
@@ -83,3 +86,9 @@ export const forwardEvaluation = (id: number, note: string) =>
 
 export const saveGrades = (id: number, grades: GradeInput[]) =>
   api.put<{ item: MemberEvaluation; message: string }>(`/evaluations/${id}/grades`, { grades }).then((r) => r.data);
+
+export const approveEvaluation = (id: number) =>
+  api.post<{ item: MemberEvaluation; message: string }>(`/evaluations/${id}/approve`).then((r) => r.data);
+
+export const reopenEvaluation = (id: number) =>
+  api.post<{ item: MemberEvaluation; message: string }>(`/evaluations/${id}/reopen`).then((r) => r.data);

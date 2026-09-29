@@ -1,11 +1,13 @@
 import { Router } from "express";
 import {
+  approveEvaluation,
   createEvaluation,
   deleteEvaluation,
   forwardEvaluation,
   getEvaluation,
   listEvaluations,
   listMyEvaluations,
+  reopenEvaluation,
   setGrades,
   updateEvaluation,
 } from "../controllers/evaluations.controller";
@@ -23,3 +25,5 @@ evaluationRoutes.put("/:id", asyncHandler(updateEvaluation));
 evaluationRoutes.delete("/:id", asyncHandler(deleteEvaluation));
 evaluationRoutes.post("/:id/forward", asyncHandler(forwardEvaluation));
 evaluationRoutes.put("/:id/grades", asyncHandler(setGrades));
+evaluationRoutes.post("/:id/approve", asyncHandler(approveEvaluation));
+evaluationRoutes.post("/:id/reopen", asyncHandler(reopenEvaluation));

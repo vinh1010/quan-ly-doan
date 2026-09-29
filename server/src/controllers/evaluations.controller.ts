@@ -152,6 +152,9 @@ export async function updateEvaluation(req: Request, res: Response) {
     where: { id, deletedAt: null, ...(scope ? { unitId: { in: scope } } : {}) },
   });
   if (!current) return res.status(404).json({ message: "Không tìm thấy đợt đánh giá" });
+  if (current.status === "DA_DUYET") {
+    return res.status(400).json({ message: "Đợt đánh giá đã được duyệt, không thể sửa" });
+  }
 
   const item = await prisma.memberEvaluation.update({ where: { id }, data: parsed.data, include: listInclude });
   await audit(req, "UPDATE", "MemberEvaluation", id, { year: item.year });
@@ -167,6 +170,9 @@ export async function deleteEvaluation(req: Request, res: Response) {
     where: { id, deletedAt: null, ...(scope ? { unitId: { in: scope } } : {}) },
   });
   if (!current) return res.status(404).json({ message: "Không tìm thấy đợt đánh giá" });
+  if (current.status === "DA_DUYET") {
+    return res.status(400).json({ message: "Đợt đánh giá đã được duyệt, không thể xóa. Hãy \"Mở lại\" trước nếu cần." });
+  }
 
   await prisma.memberEvaluation.update({ where: { id }, data: { deletedAt: new Date() } });
   await audit(req, "DELETE", "MemberEvaluation", id, { year: current.year });
@@ -200,6 +206,9 @@ export async function setGrades(req: Request, res: Response) {
     where: { id, deletedAt: null, ...(scope ? { unitId: { in: scope } } : {}) },
   });
   if (!evaluation) return res.status(404).json({ message: "Không tìm thấy đợt đánh giá" });
+  if (evaluation.status === "DA_DUYET") {
+    return res.status(400).json({ message: "Đợt đánh giá đã được duyệt, không thể sửa xếp loại" });
+  }
 
   const memberIds = [...new Set(grades.map((g) => g.memberId))];
   const members = await prisma.member.findMany({ where: { id: { in: memberIds }, deletedAt: null } });
@@ -245,6 +254,9 @@ export async function forwardEvaluation(req: Request, res: Response) {
     include: { unit: { select: { id: true, name: true, parentId: true } } },
   });
   if (!current) return res.status(404).json({ message: "Không tìm thấy đợt đánh giá" });
+  if (current.status === "DA_DUYET") {
+    return res.status(400).json({ message: "Đợt đánh giá đã được duyệt, không thể chuyển tiếp" });
+  }
 
   const toUnitId = current.unit.parentId;
   if (!toUnitId) {
@@ -262,4 +274,50 @@ export async function forwardEvaluation(req: Request, res: Response) {
 
   await audit(req, "UPDATE", "MemberEvaluation", id, { forward: true, fromUnitId: current.unitId, toUnitId });
   res.json({ item, message: `Đã chuyển lên ${toUnit.name}` });
+}
+
+/**
+ * Duyệt đợt đánh giá — chỉ áp dụng khi đơn vị đang giữ đợt không còn cấp trên để chuyển tiếp
+ * (hiện tại là Xã Phú Cát). Sau khi duyệt: khóa, không sửa/chấm điểm/chuyển/xóa được nữa
+ * (xem các hàm trên) cho tới khi "Mở lại".
+ */
+export async function approveEvaluation(req: Request, res: Response) {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id)) return res.status(400).json({ message: "Mã không hợp lệ" });
+
+  const scope = await scopeOf(req);
+  const current = await prisma.memberEvaluation.findFirst({
+    where: { id, deletedAt: null, ...(scope ? { unitId: { in: scope } } : {}) },
+    include: { unit: { select: { parentId: true } } },
+  });
+  if (!current) return res.status(404).json({ message: "Không tìm thấy đợt đánh giá" });
+  if (current.unit.parentId) {
+    return res.status(400).json({ message: "Chỉ duyệt được khi đợt đánh giá đã ở cấp cao nhất" });
+  }
+  if (current.status === "DA_DUYET") {
+    return res.status(400).json({ message: "Đợt đánh giá đã được duyệt trước đó" });
+  }
+
+  const item = await prisma.memberEvaluation.update({ where: { id }, data: { status: "DA_DUYET" }, include: detailInclude });
+  await audit(req, "UPDATE", "MemberEvaluation", id, { approve: true });
+  res.json({ item, message: "Đã duyệt đợt đánh giá" });
+}
+
+/** Mở lại đợt đánh giá đã duyệt, để sửa/chấm lại khi cần. */
+export async function reopenEvaluation(req: Request, res: Response) {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id)) return res.status(400).json({ message: "Mã không hợp lệ" });
+
+  const scope = await scopeOf(req);
+  const current = await prisma.memberEvaluation.findFirst({
+    where: { id, deletedAt: null, ...(scope ? { unitId: { in: scope } } : {}) },
+  });
+  if (!current) return res.status(404).json({ message: "Không tìm thấy đợt đánh giá" });
+  if (current.status !== "DA_DUYET") {
+    return res.status(400).json({ message: "Đợt đánh giá chưa được duyệt" });
+  }
+
+  const item = await prisma.memberEvaluation.update({ where: { id }, data: { status: "DANG_THUC_HIEN" }, include: detailInclude });
+  await audit(req, "UPDATE", "MemberEvaluation", id, { reopen: true });
+  res.json({ item, message: "Đã mở lại đợt đánh giá" });
 }
