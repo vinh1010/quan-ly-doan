@@ -3,43 +3,95 @@ import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-do
 import { useAuth } from "../hooks/useAuth";
 import ChangePasswordModal from "./ChangePasswordModal";
 
-const CRUMBS: Record<string, string> = {
-  "/": "TRANG CHỦ",
-  "/me": "HỒ SƠ CỦA TÔI",
-  "/secretaries": "BAN CHẤP HÀNH ĐOÀN CƠ SỞ",
-  "/documents": "NHẬN CÔNG VĂN",
-  "/members": "DANH SÁCH ĐOÀN VIÊN",
-  "/evaluations": "ĐÁNH GIÁ, XẾP LOẠI ĐOÀN VIÊN",
-  "/ai-assistant": "TRỢ LÝ AI SOẠN THẢO",
-  "/accounts": "QUẢN LÝ TÀI KHOẢN",
-  "/officers": "QUẢN LÝ CÁN BỘ CẤP TRÊN",
-  "/reports": "BÁO CÁO – THỐNG KÊ",
-  "/audit-logs": "NHẬT KÝ HOẠT ĐỘNG",
-};
-
-const linkCls = ({ isActive }: { isActive: boolean }) =>
-  `block px-4 py-2 text-[13px] uppercase hover:bg-slate-100 ${isActive ? "text-[#1e88e5]" : "text-slate-700"}`;
-
-/** Tiêu đề nhóm trong menu — không bấm được, chỉ để phân nhóm cho dễ rà theo mắt. */
-function GroupLabel({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="mt-1 border-t px-4 pb-1 pt-2 text-[11px] font-bold uppercase tracking-wide text-slate-400 first:mt-0 first:border-t-0 first:pt-2">
-      {children}
-    </div>
-  );
+interface MenuItem {
+  to: string;
+  label: string;
+  end?: boolean;
 }
+interface MenuGroup {
+  key: string;
+  label: string;
+  items: MenuItem[];
+}
+
+/** Cấu trúc menu ngang: mỗi nhóm là 1 mục trên thanh — 1 trang thì bấm thẳng, nhiều trang thì xổ xuống. */
+function menuGroups(role?: string): MenuGroup[] {
+  if (role === "SECRETARY") {
+    return [
+      {
+        key: "overview",
+        label: "Tổng quan",
+        items: [
+          { to: "/", label: "Trang chủ", end: true },
+          { to: "/me", label: "Hồ sơ của tôi" },
+        ],
+      },
+      {
+        key: "members",
+        label: "Công tác Đoàn viên",
+        items: [
+          { to: "/members", label: "Danh sách Đoàn viên" },
+          { to: "/evaluations", label: "Đánh giá, xếp loại Đoàn viên" },
+        ],
+      },
+      { key: "tools", label: "Công cụ", items: [{ to: "/ai-assistant", label: "Trợ lý AI soạn thảo" }] },
+    ];
+  }
+  return [
+    { key: "overview", label: "Tổng quan", items: [{ to: "/", label: "Trang chủ", end: true }] },
+    {
+      key: "members",
+      label: "Công tác Đoàn viên",
+      items: [
+        { to: "/secretaries", label: "Ban chấp hành đoàn cơ sở" },
+        { to: "/members", label: "Danh sách Đoàn viên" },
+        { to: "/evaluations", label: "Đánh giá, xếp loại Đoàn viên" },
+      ],
+    },
+    { key: "documents", label: "Văn bản", items: [{ to: "/documents", label: "Nhận công văn" }] },
+    { key: "tools", label: "Công cụ", items: [{ to: "/ai-assistant", label: "Trợ lý AI soạn thảo" }] },
+    {
+      key: "admin",
+      label: "Quản trị",
+      items: [
+        { to: "/accounts", label: "Quản lý tài khoản" },
+        { to: "/officers", label: "Quản lý cán bộ cấp trên" },
+      ],
+    },
+    {
+      key: "reports",
+      label: "Báo cáo",
+      items: [
+        { to: "/reports", label: "Báo cáo – Thống kê" },
+        { to: "/audit-logs", label: "Nhật ký hoạt động" },
+      ],
+    },
+  ];
+}
+
+const topCls = (active: boolean) =>
+  `flex items-center gap-1.5 whitespace-nowrap px-3 py-4 text-[13px] uppercase ${
+    active ? "border-b-2 border-[#1e88e5] text-[#1e88e5]" : "border-b-2 border-transparent text-slate-700 hover:text-[#1e88e5]"
+  }`;
+const subCls = ({ isActive }: { isActive: boolean }) =>
+  `block px-4 py-2 text-[13px] uppercase hover:bg-slate-100 ${isActive ? "text-[#1e88e5]" : "text-slate-700"}`;
 
 export default function Layout() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const { pathname } = useLocation();
-  const [menuOpen, setMenuOpen] = useState(false);
+  const [openGroup, setOpenGroup] = useState<string | null>(null);
   const [pwOpen, setPwOpen] = useState(false);
 
   const handleLogout = async () => {
     await logout();
     navigate("/login", { replace: true });
   };
+
+  const groups = menuGroups(user?.role);
+  const isItemActive = (i: MenuItem) => pathname === i.to;
+  const currentItem = groups.flatMap((g) => g.items).find(isItemActive);
+  const currentGroup = currentItem ? groups.find((g) => g.items.includes(currentItem)) : undefined;
 
   return (
     <div className="min-h-screen bg-[#f0f0f5]">
@@ -84,90 +136,47 @@ export default function Layout() {
         </div>
       </header>
 
-      <nav className="border-b bg-white px-4">
+      <nav className="overflow-x-auto border-b bg-white px-4">
         <ul className="flex items-center">
-          <li className="relative" onMouseLeave={() => setMenuOpen(false)}>
-            <button
-              onMouseEnter={() => setMenuOpen(true)}
-              onClick={() => setMenuOpen((v) => !v)}
-              aria-expanded={menuOpen}
-              className="flex items-center gap-1.5 border-b-2 border-[#1e88e5] px-3 py-4 text-[13px] uppercase text-[#1e88e5]"
-            >
-              Thông tin chung <span className="text-[9px]">▼</span>
-            </button>
-            {menuOpen && (
-              <div className="absolute left-0 top-full z-20 min-w-[260px] border bg-white shadow-lg">
-                <GroupLabel>Tổng quan</GroupLabel>
-                <NavLink to="/" end className={linkCls} onClick={() => setMenuOpen(false)}>
-                  Trang chủ
-                </NavLink>
-                {user?.role === "SECRETARY" ? (
-                  <>
-                    <NavLink to="/me" className={linkCls} onClick={() => setMenuOpen(false)}>
-                      Hồ sơ của tôi
-                    </NavLink>
-
-                    <GroupLabel>Công tác Đoàn viên</GroupLabel>
-                    <NavLink to="/members" className={linkCls} onClick={() => setMenuOpen(false)}>
-                      Danh sách Đoàn viên
-                    </NavLink>
-                    <NavLink to="/evaluations" className={linkCls} onClick={() => setMenuOpen(false)}>
-                      Đánh giá, xếp loại Đoàn viên
-                    </NavLink>
-
-                    <GroupLabel>Công cụ</GroupLabel>
-                    <NavLink to="/ai-assistant" className={linkCls} onClick={() => setMenuOpen(false)}>
-                      Trợ lý AI soạn thảo
-                    </NavLink>
-                  </>
-                ) : (
-                  <>
-                    <GroupLabel>Công tác Đoàn viên</GroupLabel>
-                    <NavLink to="/secretaries" className={linkCls} onClick={() => setMenuOpen(false)}>
-                      Ban chấp hành đoàn cơ sở
-                    </NavLink>
-                    <NavLink to="/members" className={linkCls} onClick={() => setMenuOpen(false)}>
-                      Danh sách Đoàn viên
-                    </NavLink>
-                    <NavLink to="/evaluations" className={linkCls} onClick={() => setMenuOpen(false)}>
-                      Đánh giá, xếp loại Đoàn viên
-                    </NavLink>
-
-                    <GroupLabel>Văn bản</GroupLabel>
-                    <NavLink to="/documents" className={linkCls} onClick={() => setMenuOpen(false)}>
-                      Nhận công văn
-                    </NavLink>
-
-                    <GroupLabel>Công cụ</GroupLabel>
-                    <NavLink to="/ai-assistant" className={linkCls} onClick={() => setMenuOpen(false)}>
-                      Trợ lý AI soạn thảo
-                    </NavLink>
-
-                    <GroupLabel>Quản trị</GroupLabel>
-                    <NavLink to="/accounts" className={linkCls} onClick={() => setMenuOpen(false)}>
-                      Quản lý tài khoản
-                    </NavLink>
-                    <NavLink to="/officers" className={linkCls} onClick={() => setMenuOpen(false)}>
-                      Quản lý cán bộ cấp trên
-                    </NavLink>
-
-                    <GroupLabel>Báo cáo</GroupLabel>
-                    <NavLink to="/reports" className={linkCls} onClick={() => setMenuOpen(false)}>
-                      Báo cáo – Thống kê
-                    </NavLink>
-                    <NavLink to="/audit-logs" className={linkCls} onClick={() => setMenuOpen(false)}>
-                      Nhật ký hoạt động
-                    </NavLink>
-                  </>
+          {groups.map((g) => {
+            const active = g.items.some(isItemActive);
+            if (g.items.length === 1) {
+              const only = g.items[0];
+              return (
+                <li key={g.key}>
+                  <NavLink to={only.to} end={only.end} className={() => topCls(active)}>
+                    {g.label}
+                  </NavLink>
+                </li>
+              );
+            }
+            return (
+              <li key={g.key} className="relative" onMouseLeave={() => setOpenGroup(null)}>
+                <button
+                  onMouseEnter={() => setOpenGroup(g.key)}
+                  onClick={() => setOpenGroup((v) => (v === g.key ? null : g.key))}
+                  aria-expanded={openGroup === g.key}
+                  className={topCls(active)}
+                >
+                  {g.label} <span className="text-[9px]">▼</span>
+                </button>
+                {openGroup === g.key && (
+                  <div className="absolute left-0 top-full z-20 min-w-[260px] border bg-white shadow-lg">
+                    {g.items.map((i) => (
+                      <NavLink key={i.to} to={i.to} end={i.end} className={subCls} onClick={() => setOpenGroup(null)}>
+                        {i.label}
+                      </NavLink>
+                    ))}
+                  </div>
                 )}
-              </div>
-            )}
-          </li>
+              </li>
+            );
+          })}
         </ul>
       </nav>
 
       <div className="px-4 py-3 text-[13px] uppercase text-slate-700">
-        THÔNG TIN CHUNG <span className="mx-1">/</span> {CRUMBS[pathname] ?? ""}
+        {(currentGroup?.label ?? "").toUpperCase()} <span className="mx-1">/</span> {(currentItem?.label ?? "").toUpperCase()}
       </div>
 
       <main className="px-4 pb-8">
