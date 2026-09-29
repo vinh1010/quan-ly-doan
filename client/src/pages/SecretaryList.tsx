@@ -25,13 +25,23 @@ const CELL = "px-3 py-3 text-[13px]";
 const field =
   "mt-1 w-full border-0 border-b border-slate-300 bg-transparent py-1 text-sm outline-none focus:border-[#1890ff]";
 
-function IconButton({ label, onClick, children }: { label: string; onClick: () => void; children: React.ReactNode }) {
+function IconButton({
+  label,
+  onClick,
+  color = "bg-[#1e88e5]",
+  children,
+}: {
+  label: string;
+  onClick: () => void;
+  color?: string;
+  children: React.ReactNode;
+}) {
   return (
     <button
       onClick={onClick}
       aria-label={label}
       title={label}
-      className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-[#1e88e5] text-white hover:opacity-90"
+      className={`inline-flex h-8 w-8 items-center justify-center rounded-full ${color} text-white hover:opacity-90`}
     >
       {children}
     </button>
@@ -254,7 +264,7 @@ export default function SecretaryList() {
             </button>
             <button
               onClick={() => setConfirmBulk(true)}
-              className="rounded-sm bg-[#d32f2f] px-4 py-1.5 text-xs font-bold uppercase text-white hover:opacity-90"
+              className="rounded-sm bg-[#c0392b] px-4 py-1.5 text-xs font-bold uppercase text-white hover:opacity-90"
             >
               Xóa đã chọn
             </button>
@@ -292,7 +302,7 @@ export default function SecretaryList() {
                   <IconButton label={`Sửa ${s.fullName}`} onClick={() => setModal({ mode: "edit", id: s.id })}>
                     {PencilIcon}
                   </IconButton>
-                  <IconButton label={`Xóa ${s.fullName}`} onClick={() => setToDelete(s)}>
+                  <IconButton label={`Xóa ${s.fullName}`} color="bg-[#c0392b]" onClick={() => setToDelete(s)}>
                     {TrashIcon}
                   </IconButton>
                 </span>
@@ -420,7 +430,7 @@ export default function SecretaryList() {
                     <IconButton label={`Sửa ${s.fullName}`} onClick={() => setModal({ mode: "edit", id: s.id })}>
                       {PencilIcon}
                     </IconButton>
-                    <IconButton label={`Xóa ${s.fullName}`} onClick={() => setToDelete(s)}>
+                    <IconButton label={`Xóa ${s.fullName}`} color="bg-[#c0392b]" onClick={() => setToDelete(s)}>
                       {TrashIcon}
                     </IconButton>
                   </span>

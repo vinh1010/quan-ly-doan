@@ -353,7 +353,7 @@ export default function SecretaryModal({ mode, secretaryId, cccd, unitId, onClos
                 <button
                   type="submit"
                   disabled={save.isPending}
-                  className="rounded-sm bg-[#5cb85c] px-6 py-2 text-xs font-bold uppercase text-white hover:opacity-90 disabled:opacity-60"
+                  className="rounded-sm bg-[#3d7ebf] px-6 py-2 text-xs font-bold uppercase text-white hover:opacity-90 disabled:opacity-60"
                 >
                   {save.isPending ? "Đang lưu..." : mode === "create" ? "Lưu thông tin" : "Cập nhật"}
                 </button>

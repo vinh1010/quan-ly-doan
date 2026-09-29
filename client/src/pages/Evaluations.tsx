@@ -314,14 +314,14 @@ function evalActions(
   h: { grade: () => void; edit: () => void; forward: () => void; del: () => void; approve: () => void; reopen: () => void },
 ) {
   if (d.status === "DA_DUYET") {
-    return [{ key: "reopen", label: "Mở lại", color: "bg-amber-600", icon: ReopenIcon, onClick: h.reopen }];
+    return [{ key: "reopen", label: "Mở lại", color: "bg-[#d97706]", icon: ReopenIcon, onClick: h.reopen }];
   }
   const isTop = d.unit.parentId === null;
   return [
     { key: "grade", label: "Chấm điểm", color: "bg-[#1b7a3a]", icon: GradeIcon, onClick: h.grade },
     { key: "edit", label: "Sửa", color: "bg-[#1e88e5]", icon: PencilIcon, onClick: h.edit },
     isTop
-      ? { key: "approve", label: "Duyệt", color: "bg-[#16a34a]", icon: ApproveIcon, onClick: h.approve }
+      ? { key: "approve", label: "Duyệt", color: "bg-[#1b7a3a]", icon: ApproveIcon, onClick: h.approve }
       : { key: "forward", label: "Chuyển lên", color: "bg-[#8e44ad]", icon: ForwardIcon, onClick: h.forward },
     { key: "delete", label: "Xóa", color: "bg-[#c0392b]", icon: TrashIcon, onClick: h.del },
   ];
