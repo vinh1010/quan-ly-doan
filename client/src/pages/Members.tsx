@@ -23,6 +23,23 @@ const field =
 const STATUS_LABEL = { ACTIVE: "Đang sinh hoạt", INACTIVE: "Tạm vắng", MOVED: "Đã chuyển đi" } as const;
 const STATUS_COLOR: Record<string, string> = { ACTIVE: "text-green-700", INACTIVE: "text-amber-600", MOVED: "text-slate-400" };
 
+/* ---------- Icon gọn cho các nút thao tác (cùng kiểu với Ban chấp hành đoàn cơ sở) ---------- */
+function IconBtn({ label, color, onClick, children }: { label: string; color: string; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button
+      onClick={onClick}
+      aria-label={label}
+      title={label}
+      className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${color} text-white hover:opacity-90`}
+    >
+      {children}
+    </button>
+  );
+}
+const ICON_PROPS = { width: 15, height: 15, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 2, "aria-hidden": true } as const;
+const PencilIcon = <svg {...ICON_PROPS}><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" /></svg>;
+const TrashIcon = <svg {...ICON_PROPS}><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14M10 11v6M14 11v6" /></svg>;
+
 function empty(unitId?: string): MemberInput {
   return { fullName: "", dob: "", gender: "", status: "ACTIVE", note: "", unitId: unitId ?? "" };
 }
@@ -228,12 +245,8 @@ export default function Members() {
                 )}
               </dl>
               <div className="mt-3 flex gap-2">
-                <button onClick={() => setModal({ item: m })} className="flex-1 rounded-sm bg-[#1e88e5] py-2 text-xs font-bold uppercase text-white hover:opacity-90">
-                  Sửa
-                </button>
-                <button onClick={() => setToDelete(m)} className="flex-1 rounded-sm bg-[#c0392b] py-2 text-xs font-bold uppercase text-white hover:opacity-90">
-                  Xóa
-                </button>
+                <IconBtn label="Sửa" color="bg-[#1e88e5]" onClick={() => setModal({ item: m })}>{PencilIcon}</IconBtn>
+                <IconBtn label="Xóa" color="bg-[#c0392b]" onClick={() => setToDelete(m)}>{TrashIcon}</IconBtn>
               </div>
             </div>
           ))}
@@ -267,12 +280,8 @@ export default function Members() {
                 </td>
                 <td className={CELL}>
                   <div className="flex justify-center gap-2">
-                    <button onClick={() => setModal({ item: m })} className="rounded-sm bg-[#1e88e5] px-2.5 py-1.5 text-xs font-bold uppercase text-white hover:opacity-90">
-                      Sửa
-                    </button>
-                    <button onClick={() => setToDelete(m)} className="rounded-sm bg-[#c0392b] px-2.5 py-1.5 text-xs font-bold uppercase text-white hover:opacity-90">
-                      Xóa
-                    </button>
+                    <IconBtn label="Sửa" color="bg-[#1e88e5]" onClick={() => setModal({ item: m })}>{PencilIcon}</IconBtn>
+                    <IconBtn label="Xóa" color="bg-[#c0392b]" onClick={() => setToDelete(m)}>{TrashIcon}</IconBtn>
                   </div>
                 </td>
               </tr>

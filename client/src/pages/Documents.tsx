@@ -28,6 +28,25 @@ const STATUS_COLOR: Record<string, string> = {
   DA_XU_LY: "text-green-700",
 };
 
+/* ---------- Icon gọn cho các nút thao tác (cùng kiểu với Ban chấp hành đoàn cơ sở) ---------- */
+function IconBtn({ label, color, onClick, children }: { label: string; color: string; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button
+      onClick={onClick}
+      aria-label={label}
+      title={label}
+      className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${color} text-white hover:opacity-90`}
+    >
+      {children}
+    </button>
+  );
+}
+const ICON_PROPS = { width: 15, height: 15, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 2, "aria-hidden": true } as const;
+const PencilIcon = <svg {...ICON_PROPS}><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" /></svg>;
+const ForwardIcon = <svg {...ICON_PROPS}><path d="M12 19V5M5 12l7-7 7 7" /></svg>;
+const ApproveIcon = <svg {...ICON_PROPS}><path d="M20 6 9 17l-5-5" /></svg>;
+const TrashIcon = <svg {...ICON_PROPS}><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14M10 11v6M14 11v6" /></svg>;
+
 const EMPTY: DocInput = {
   number: "", summary: "", sender: "", issuedDate: "", receivedDate: new Date().toISOString().slice(0, 10),
   type: "KHAC", status: "CHUA_XU_LY", deadline: "", assignedTo: "", note: "", unitId: "",
@@ -413,20 +432,12 @@ export default function Documents() {
                 </p>
               ) : (
                 <div className="mt-3 flex flex-wrap gap-2">
-                  <button onClick={() => setModal({ doc: d })} className="flex-1 rounded-sm bg-[#1e88e5] py-2 text-xs font-bold uppercase text-white hover:opacity-90">
-                    Sửa
-                  </button>
-                  <button onClick={() => setToForward(d)} className="flex-1 rounded-sm bg-[#8e44ad] py-2 text-xs font-bold uppercase text-white hover:opacity-90">
-                    Chuyển tiếp
-                  </button>
+                  <IconBtn label="Sửa" color="bg-[#1e88e5]" onClick={() => setModal({ doc: d })}>{PencilIcon}</IconBtn>
+                  <IconBtn label="Chuyển tiếp" color="bg-[#8e44ad]" onClick={() => setToForward(d)}>{ForwardIcon}</IconBtn>
                   {canConfirm(d) && (
-                    <button onClick={() => setToConfirm(d)} className="flex-1 rounded-sm bg-[#1b7a3a] py-2 text-xs font-bold uppercase text-white hover:opacity-90">
-                      Xác nhận
-                    </button>
+                    <IconBtn label="Xác nhận" color="bg-[#1b7a3a]" onClick={() => setToConfirm(d)}>{ApproveIcon}</IconBtn>
                   )}
-                  <button onClick={() => setToDelete(d)} className="flex-1 rounded-sm bg-[#c0392b] py-2 text-xs font-bold uppercase text-white hover:opacity-90">
-                    Xóa
-                  </button>
+                  <IconBtn label="Xóa" color="bg-[#c0392b]" onClick={() => setToDelete(d)}>{TrashIcon}</IconBtn>
                 </div>
               )}
             </div>
@@ -476,20 +487,12 @@ export default function Documents() {
                     </div>
                   ) : (
                     <div className="flex flex-wrap justify-center gap-1.5">
-                      <button onClick={() => setModal({ doc: d })} className="rounded-sm bg-[#1e88e5] px-2.5 py-1.5 text-xs font-bold uppercase text-white hover:opacity-90">
-                        Sửa
-                      </button>
-                      <button onClick={() => setToForward(d)} className="rounded-sm bg-[#8e44ad] px-2.5 py-1.5 text-xs font-bold uppercase text-white hover:opacity-90">
-                        Chuyển
-                      </button>
+                      <IconBtn label="Sửa" color="bg-[#1e88e5]" onClick={() => setModal({ doc: d })}>{PencilIcon}</IconBtn>
+                      <IconBtn label="Chuyển tiếp" color="bg-[#8e44ad]" onClick={() => setToForward(d)}>{ForwardIcon}</IconBtn>
                       {canConfirm(d) && (
-                        <button onClick={() => setToConfirm(d)} className="rounded-sm bg-[#1b7a3a] px-2.5 py-1.5 text-xs font-bold uppercase text-white hover:opacity-90">
-                          Xác nhận
-                        </button>
+                        <IconBtn label="Xác nhận" color="bg-[#1b7a3a]" onClick={() => setToConfirm(d)}>{ApproveIcon}</IconBtn>
                       )}
-                      <button onClick={() => setToDelete(d)} className="rounded-sm bg-[#c0392b] px-2.5 py-1.5 text-xs font-bold uppercase text-white hover:opacity-90">
-                        Xóa
-                      </button>
+                      <IconBtn label="Xóa" color="bg-[#c0392b]" onClick={() => setToDelete(d)}>{TrashIcon}</IconBtn>
                     </div>
                   )}
                 </td>

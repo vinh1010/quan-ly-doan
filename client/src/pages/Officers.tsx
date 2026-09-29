@@ -24,6 +24,37 @@ const ROLE_LABEL = { ADMIN: "Quản trị hệ thống", SUPERIOR: "Cán bộ c�
 const LEVEL_LABEL: Record<string, string> = {
   TINH: "Tỉnh", HUYEN: "Huyện", XA_PHUONG: "Xã/Phường", CO_SO: "Cơ sở", CHI_DOAN: "Chi đoàn",
 };
+
+/* ---------- Icon gọn cho các nút thao tác (cùng kiểu với Ban chấp hành đoàn cơ sở) ---------- */
+function IconBtn({
+  label,
+  color,
+  onClick,
+  disabled,
+  children,
+}: {
+  label: string;
+  color: string;
+  onClick: () => void;
+  disabled?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      aria-label={label}
+      title={label}
+      className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${color} text-white hover:opacity-90 disabled:opacity-40`}
+    >
+      {children}
+    </button>
+  );
+}
+const ICON_PROPS = { width: 15, height: 15, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 2, "aria-hidden": true } as const;
+const KeyIcon = <svg {...ICON_PROPS}><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4" /></svg>;
+const LockIcon = <svg {...ICON_PROPS}><rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg>;
+const UnlockIcon = <svg {...ICON_PROPS}><rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0 1 9.5-2.3" /></svg>;
 const EMPTY: OfficerInput = { username: "", fullName: "", email: "", role: "SUPERIOR", unitId: "", password: "", confirmPassword: "" };
 
 function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
@@ -233,17 +264,26 @@ export default function Officers() {
   const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const unitText = (o: Officer) => (o.unit ? `${o.unit.name} (${LEVEL_LABEL[o.unit.level] ?? o.unit.level})` : "Toàn hệ thống");
 
-  const actions = (o: Officer, block = false) => {
+  const actions = (o: Officer) => {
     const self = o.id === user?.id;
-    const btn = "rounded-sm px-3 py-1.5 text-xs font-bold uppercase text-white hover:opacity-90 disabled:opacity-40 " + (block ? "flex-1 py-2 " : "");
     return (
-      <div className={block ? "mt-3 flex gap-2" : "flex justify-center gap-2"}>
-        <button onClick={() => setResetting(o)} disabled={self} title={self ? "Dùng nút Đổi mật khẩu ở thanh trên" : undefined} className={btn + "bg-[#3d7ebf]"}>
-          Đặt lại MK
-        </button>
-        <button onClick={() => setTarget(o)} disabled={self} title={self ? "Không thể khóa chính mình" : undefined} className={btn + "bg-[#1e88e5]"}>
-          {o.status === "ACTIVE" ? "Khóa" : "Kích hoạt"}
-        </button>
+      <div className="flex justify-center gap-2">
+        <IconBtn
+          label="Đặt lại mật khẩu"
+          color="bg-[#3d7ebf]"
+          onClick={() => setResetting(o)}
+          disabled={self}
+        >
+          {KeyIcon}
+        </IconBtn>
+        <IconBtn
+          label={self ? "Không thể khóa chính mình" : o.status === "ACTIVE" ? "Khóa" : "Kích hoạt"}
+          color="bg-[#1e88e5]"
+          onClick={() => setTarget(o)}
+          disabled={self}
+        >
+          {o.status === "ACTIVE" ? LockIcon : UnlockIcon}
+        </IconBtn>
       </div>
     );
   };
@@ -311,7 +351,7 @@ export default function Officers() {
                 <dt className="text-slate-500">Đăng nhập cuối</dt>
                 <dd>{o.lastLoginAt ? formatDate(o.lastLoginAt) : "Chưa đăng nhập"}</dd>
               </dl>
-              {actions(o, true)}
+              <div className="mt-3">{actions(o)}</div>
             </div>
           ))}
           {!list.isFetching && items.length === 0 && (
