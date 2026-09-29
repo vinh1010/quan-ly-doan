@@ -10,6 +10,7 @@ const CRUMBS: Record<string, string> = {
   "/documents": "NHẬN CÔNG VĂN",
   "/members": "DANH SÁCH ĐOÀN VIÊN",
   "/evaluations": "ĐÁNH GIÁ, XẾP LOẠI ĐOÀN VIÊN",
+  "/ai-assistant": "TRỢ LÝ AI SOẠN THẢO",
   "/accounts": "QUẢN LÝ TÀI KHOẢN",
   "/officers": "QUẢN LÝ CÁN BỘ CẤP TRÊN",
   "/reports": "BÁO CÁO – THỐNG KÊ",
@@ -101,6 +102,9 @@ export default function Layout() {
                     <NavLink to="/evaluations" className={linkCls} onClick={() => setMenuOpen(false)}>
                       Đánh giá, xếp loại Đoàn viên
                     </NavLink>
+                    <NavLink to="/ai-assistant" className={linkCls} onClick={() => setMenuOpen(false)}>
+                      Trợ lý AI soạn thảo
+                    </NavLink>
                   </>
                 ) : (
                   <>
@@ -115,6 +119,9 @@ export default function Layout() {
                     </NavLink>
                     <NavLink to="/evaluations" className={linkCls} onClick={() => setMenuOpen(false)}>
                       Đánh giá, xếp loại Đoàn viên
+                    </NavLink>
+                    <NavLink to="/ai-assistant" className={linkCls} onClick={() => setMenuOpen(false)}>
+                      Trợ lý AI soạn thảo
                     </NavLink>
                     <NavLink to="/accounts" className={linkCls} onClick={() => setMenuOpen(false)}>
                       Quản lý tài khoản

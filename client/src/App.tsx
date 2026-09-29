@@ -13,6 +13,7 @@ import MyProfile from "./pages/MyProfile";
 import Documents from "./pages/Documents";
 import Evaluations from "./pages/Evaluations";
 import Members from "./pages/Members";
+import AiAssistant from "./pages/AiAssistant";
 
 export default function App() {
   return (
@@ -25,6 +26,7 @@ export default function App() {
           {/* Mở cho mọi vai trò kể cả SECRETARY (Bí thư cấp thôn tự nhập Đoàn viên + đánh giá) */}
           <Route path="/members" element={<Members />} />
           <Route path="/evaluations" element={<Evaluations />} />
+          <Route path="/ai-assistant" element={<AiAssistant />} />
           <Route element={<StaffRoute />}>
             <Route path="/secretaries" element={<SecretaryList />} />
             <Route path="/documents" element={<Documents />} />

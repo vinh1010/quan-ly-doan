@@ -11,6 +11,7 @@ import { accountRoutes, auditLogRoutes, officerRoutes, reportRoutes } from "./ro
 import { documentRoutes } from "./routes/documents";
 import { evaluationRoutes } from "./routes/evaluations";
 import { memberRoutes } from "./routes/members";
+import { aiRoutes } from "./routes/ai";
 
 if (!process.env.JWT_SECRET) {
   throw new Error("Thiếu JWT_SECRET trong server/.env");
@@ -45,6 +46,7 @@ app.use("/api/reports", reportRoutes);
 app.use("/api/documents", documentRoutes);
 app.use("/api/evaluations", evaluationRoutes);
 app.use("/api/members", memberRoutes);
+app.use("/api/ai", aiRoutes);
 
 // Khi deploy: server phục vụ luôn bản build của client (một host duy nhất, không lo CORS)
 const clientDist = path.resolve(__dirname, "../../client/dist");
