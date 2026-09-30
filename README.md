@@ -77,7 +77,4 @@ server/   Express: routes, controllers, middleware, prisma/ (schema + migrations
 
 ## Tạo tài khoản cán bộ cấp trên
 - Trang **Quản trị → Quản lý cán bộ cấp trên**: ADMIN tạo được ADMIN hoặc cán bộ cấp trên ở mọi đơn vị; cán bộ cấp trên chỉ tạo và quản lý tài khoản thuộc đơn vị trong phạm vi của mình (khóa, kích hoạt, đặt lại mật khẩu).
-- Tạo ADMIN đầu tiên: khai báo `SEED_ADMIN_USERNAME` và `SEED_ADMIN_PASSWORD` (trong `server/.env` hoặc biến môi trường trên host) rồi chạy seed. Nếu tài khoản đã tồn tại thì seed không ghi đè mật khẩu.
-
-## Triển khai (Render + Neon)
-Dự án đang chạy thật trên Render (`render.yaml`), CSDL PostgreSQL trên Neon. Lệnh khởi động (`npm run start -w server`) tự chạy `prisma migrate deploy && prisma db seed` mỗi lần deploy — chỉ cần khai báo đủ biến môi trường ở mục trên trên Render Dashboard (tab Environment), không cần thao tác gì thêm trên CSDL.
+- Tạo ADMIN đầu tiên: khai báo `SEED_ADMIN_USERNAME` và `SEED_ADMIN_PASSWORD` trong `server/.env` rồi chạy lại seed (`npm run db:seed`). Nếu tài khoản đã tồn tại thì seed không ghi đè mật khẩu.
