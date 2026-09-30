@@ -30,19 +30,37 @@ Hệ thống quản lý nghiệp vụ công tác Đoàn TNCS Hồ Chí Minh, đ�
 - 3 vai trò: **ADMIN**, **SUPERIOR** (cán bộ cấp trên), **SECRETARY** (Bí thư/Phó Bí thư)
 
 ## Yêu cầu
-- Node.js 20+ (https://nodejs.org)
-- PostgreSQL 16 — dùng Docker (`npm run db:up`) hoặc cài trực tiếp rồi sửa `DATABASE_URL` trong `server/.env`
+- **Node.js 20+**
+- **Git**
+- **PostgreSQL 16** — cài trực tiếp (không bắt buộc Docker)
+
+### Cài Node.js, Git, PostgreSQL (Windows)
+Cách nhanh nhất — mở PowerShell hoặc CMD, chạy (winget có sẵn trên Windows 10/11):
+```bash
+winget install OpenJS.NodeJS.LTS
+winget install Git.Git
+winget install PostgreSQL.PostgreSQL.16
+```
+Cài xong **đóng và mở lại terminal** để nhận biến môi trường mới (lệnh `node`, `git`, `psql` mới nhận được).
+
+Nếu không dùng winget, tải cài đặt tay: Node.js tại https://nodejs.org (bản LTS), Git tại https://git-scm.com/downloads, PostgreSQL tại https://www.postgresql.org/download/windows — khi cài PostgreSQL, nhớ **đặt/ghi lại mật khẩu user `postgres`** (dùng ở bước tạo `.env` bên dưới).
+
+### Tạo CSDL bằng DBeaver (không cần Docker)
+1. Mở DBeaver → **New Database Connection** → chọn **PostgreSQL** → điền `localhost`, port `5432`, user `postgres`, mật khẩu đã đặt lúc cài → Test Connection → Finish.
+2. Chuột phải vào server vừa kết nối → **Create New Database** → đặt tên **`quanlydoan`** → OK.
+3. Nếu mật khẩu `postgres` bạn đặt **khác** chữ `postgres` mặc định, sửa lại `DATABASE_URL` trong `server/.env` cho khớp (xem bảng biến môi trường bên dưới).
 
 ## Cài đặt & chạy lần đầu
 ```bash
 git clone <repo-url> quan-ly-doan
 cd quan-ly-doan
-cp server/.env.example server/.env   # sửa lại các giá trị bên dưới nếu cần
-npm run db:up                        # bật Postgres bằng Docker (bỏ qua nếu đã tự cài Postgres)
+cp server/.env.example server/.env   # sửa lại các giá trị bên dưới nếu cần (đặc biệt DATABASE_URL nếu mật khẩu Postgres khác mặc định)
 npm run setup                        # cài package + tạo bảng + seed dữ liệu (xem mục dưới)
 npm run dev                          # chạy cả API (:3000) và web (:5173)
 ```
 Mở http://localhost:5173.
+
+> Có sẵn Docker và muốn dùng thay vì cài PostgreSQL trực tiếp? Chạy `npm run db:up` trước bước `npm run setup` — không bắt buộc.
 
 ### Các biến trong `server/.env` cần biết
 | Biến | Bắt buộc | Ghi chú |
